@@ -72,23 +72,3 @@ def run():
 if __name__ == "__main__":
     run()
 
-
-
-# import discord
-# from discord.ext import commands
-
-# # Set up the bot with a command prefix
-# bot = commands.Bot(command_prefix="!")
-
-# # Event when the bot is ready
-# @bot.event
-# async def on_ready():
-#     print(f'Logged in as {bot.user}')
-
-# # Command to display a message
-# @bot.command()
-# async def hello(ctx):
-#     await ctx.send('Hello, world!')
-
-# # Run the bot
-# bot.run('MTMzMzg5NjIxNzUyNDA0MzkyNw.GtTZKx.8hwyUS_rHIemH7WXl0pf8A31Ihw6qk2aUmFpXs')
