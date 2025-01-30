@@ -43,9 +43,32 @@ def run():
     @bot.event 
     async def on_ready():
         await utils.load_videocmds(bot)
+
+    @bot.event
+    async def on_message(message):
+        # Ignore bot messages to prevent infinite loops
+        if message.author.bot:
+            return
+
+        #track who sent message
+        user_id = message.author.id
+        # Get message length
+        message_length = len(message.content)
+        # Get message timestamp
+        timestamp = message.created_at  # This is in UTC time
+
+        # Send a response with the message length and timestamp
+        await message.channel.send(f"Your message is {message_length} characters long. Sent at {timestamp} UTC.")
+
+        if message_length < 20:
+            await short_message(message.channel)
+
+
+        # Ensure other bot commands still work
+        await bot.process_commands(message)
     
     @bot.command()
-    async def button(ctx):
+    async def button(ctx): #name of user command
         view = SimpleView(timeout=50)
         # button = discord.ui.Button(label="Click me")
         # view.add_item(button)
@@ -64,6 +87,10 @@ def run():
             
         else:
             logger.error("cancel")
+
+    @bot.command() #can later change this to be a call to OpenAI
+    async def short_message(channel):  # Modified to accept the channel as a parameter
+        await channel.send("You sent a short message! Try adding more details.")
         
         
         
