@@ -22,14 +22,14 @@ class SimpleView(discord.ui.View):
         await self.disable_all_items()
     
     @discord.ui.button(label="Prompt", 
-                       style=discord.ButtonStyle.success)
+                       style=discord.ButtonStyle.primary)
     async def hello(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_message("Example prompt here")
         self.foo = True
         self.stop()
         
     @discord.ui.button(label="Feedback", 
-                       style=discord.ButtonStyle.red)
+                       style=discord.ButtonStyle.secondary)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_message("Good or Bad?")
         self.foo = False
