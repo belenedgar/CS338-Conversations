@@ -4,6 +4,7 @@ import settings
 import discord 
 from discord.ext import commands
 import utils
+from textblob import TextBlob
     
 logger = settings.logging.getLogger("bot")
 
@@ -62,7 +63,20 @@ def run():
 
         if message_length < 20:
             await short_message(message.channel)
+            #TextBlob can also lemmatize words before sending to OpenAI if helpful
 
+
+        #analyze message sentiment
+        blob = TextBlob(message.content)
+        sentiment = blob.sentiment.polarity  # Sentiment value between -1 (negative) and 1 (positive)
+        # Send a response with sentiment analysis result
+        if sentiment > 0:
+            await message.channel.send("This message is positive!")
+        elif sentiment < 0:
+            await message.channel.send("Careful, your tone is sounding negative!")
+        else:
+            await message.channel.send("This message is neutral!")
+        
 
         # Ensure other bot commands still work
         await bot.process_commands(message)
