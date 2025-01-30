@@ -84,8 +84,6 @@ def run():
     @bot.command()
     async def button(ctx): #name of user command
         view = SimpleView(timeout=50)
-        # button = discord.ui.Button(label="Click me")
-        # view.add_item(button)
         
         message = await ctx.send(view=view)
         view.message = message
@@ -103,7 +101,7 @@ def run():
             logger.error("cancel")
 
     @bot.command() #can later change this to be a call to OpenAI
-    async def short_message(channel):  # Modified to accept the channel as a parameter
+    async def short_message(channel):
         await channel.send("You sent a short message! Try adding more details.")
         
         
