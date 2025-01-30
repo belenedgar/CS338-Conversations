@@ -39,6 +39,7 @@ def run():
     intents = discord.Intents.default()
     intents.message_content = True
     
+    data = []
     bot = commands.Bot(command_prefix="!", intents=intents)
     
     @bot.event 
@@ -50,8 +51,12 @@ def run():
         # Ignore bot messages to prevent infinite loops
         if message.author.bot:
             return
+        
+        message.content = message.content.lower()
+        if message.content != "!button":
+            data.append(message.content)
 
-        #track who sent message
+        #track who sent messages
         user_id = message.author.id
         # Get message length
         message_length = len(message.content)
@@ -59,7 +64,8 @@ def run():
         timestamp = message.created_at  # This is in UTC time
 
         # Send a response with the message length and timestamp
-        await message.channel.send(f"Your message is {message_length} characters long. Sent at {timestamp} UTC.")
+        await message.channel.send(f"Your message is {message_length} characters long. Sent at {timestamp} UTC." )
+        await message.channel.send(f"ALso here is your data: {data}")
 
         if message_length < 20:
             await short_message(message.channel)
