@@ -4,6 +4,8 @@ import settings
 import discord 
 from discord.ext import commands
 import utils
+from openai import OpenAI
+from openai_func import get_prompt
 #from textblob import TextBlob
     
 logger = settings.logging.getLogger("bot")
@@ -38,7 +40,8 @@ class SimpleView(discord.ui.View):
 def run():
     intents = discord.Intents.default()
     intents.message_content = True
-    
+    #create a client for openAI
+    client = OpenAI(api_key="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")
     data = []
     bot = commands.Bot(command_prefix="!", intents=intents)
     
@@ -66,7 +69,14 @@ def run():
         # Send a response with the message length and timestamp
         await message.channel.send(f"Your message is {message_length} characters long. Sent at {timestamp} UTC." )
         await message.channel.send(f"ALso here is your data: {data}")
-
+        if len(data) >= 3:
+            #check if timestamps are valid ?
+                #maybe make a front end site with toggles to turn certain features on/off before running bot (only if we run out of stuff to add/have time lol)
+            prompt = get_prompt(data,client,100)
+            await message.channel.send("Here is a prompt for conversation based on messages in the chat:\n"+ prompt)
+            #we should reset data here to be empty array again so we arent passing irrelevant messages to openai
+            data.clear()
+            
         if message_length < 20:
             await short_message(message.channel)
             #TextBlob can also lemmatize words before sending to OpenAI if helpful
