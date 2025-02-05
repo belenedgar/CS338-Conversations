@@ -6,13 +6,21 @@ from discord.ext import commands
 import utils
 from openai import OpenAI
 from openai_func import get_prompt
-#from textblob import TextBlob
+# for timeout errors
+import asyncio
+from textblob import TextBlob
     
 logger = settings.logging.getLogger("bot")
 client = OpenAI(api_key="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")
 class SimpleView(discord.ui.View):
-    
-    foo : bool = None
+    #added an init function to take in the bot_client in order to receive + respond to user messages after button presses
+    def __init__(self,bot_client,timeout):
+        super().__init__() # ensures parent class discord.ui.View is initialized before adding custom init
+        self.bot_client = bot_client # store bot_client instance
+        self.timeout = timeout
+        self.foo= None
+
+    #foo : bool = None
     
     async def disable_all_items(self):
         for item in self.children:
@@ -27,18 +35,57 @@ class SimpleView(discord.ui.View):
     @discord.ui.button(label="Prompt", 
                        style=discord.ButtonStyle.primary)
     async def hello(self, interaction: discord.Interaction, button: discord.ui.Button):
-        #NOTE: ask user for likes to personalize prompt starter
-        prompt = get_prompt("",client,200)
-        await interaction.response.send_message("Here are some prompts to start up the conversation: \n"+prompt)
+        #TODO: MAKE SURE THE RESPONSE TO BUTTON DOES NOT GET ADDED TO DATA
+
+        # prompt user to topics they like/ who they are talking to
+        await interaction.response.send_message("Describe who you are trying to start a conversation with")
+        #function to ensure the message came from the intended user + the correct channel
+        def check(message):
+            return message.author == interaction.user and message.channel == interaction.channel
+        try:
+            #save user's response and generate a prompt based on it 
+            user_response = await self.bot_client.wait_for("message",check = check, timeout = 50.0) # timeout is set to 50 sec
+            prompt = get_prompt(user_response.content, client, 100,button_pressed=True)
+        
+            #send user prompts
+            await interaction.followup.send("Here are some prompts to start up the conversation: \n"+prompt)
+
+        except asyncio.TimeoutError:
+          #IF USER TAKES TOO LONG TO RESPOND, TIME OUT
+          await interaction.followup.send("Button Response Timed out")    
         self.foo = True
         self.stop()
         
     @discord.ui.button(label="Feedback", 
                        style=discord.ButtonStyle.secondary)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("Good or Bad?")
-        #Take in user input 
-        #
+        #TODO: Actually use feedback to improve system
+
+        await interaction.response.send_message("Please enter your feedback on ChatterBox here:")
+        #NEW: Take in user input 
+        def check(message):
+            return message.author == interaction.user and message.channel == interaction.channel
+        try:
+            #save user's response and generate a prompt based on it 
+            user_feedback = await self.bot_client.wait_for("message",check = check, timeout = 50.0) # timeout is set to 50 sec
+            blob = TextBlob(user_feedback.content)
+            sentiment = blob.sentiment.polarity  # Sentiment value between -1 (negative) and 1 (positive)
+            # Send a response with sentiment analysis result
+            if sentiment > 0:
+                #This message is positive!
+                await interaction.followup.send("Thank you for your feedback! We are glad you are enjoying using ChatterBox and will use your feedback to make sure you continue to enjoy using our system :) ")
+                
+            elif sentiment < 0:
+                #negative!
+                await interaction.followup.send("Im sorry to hear that, your feedback will be used to improve our system and ensure you have a better experience in the future")
+            else:
+               #neutral!
+               await interaction.followup.send("Your feedback will be used to improve your experience in the future with ChatterBox")
+
+        except asyncio.TimeoutError:
+          #IF USER TAKES TOO LONG TO RESPOND, TIME OUT
+          await interaction.followup.send("Button Response Timed out")   
+
         self.foo = False
         self.stop()
         
@@ -61,6 +108,7 @@ def run():
             return
         
         message.content = message.content.lower()
+        #TODO: Update this to not track responses to the !button call
         if message.content != "!button":
             data.append(message.content)
 
@@ -109,7 +157,7 @@ def run():
     #looks for when user presses button
     async def button(ctx): #name of user command
         #S
-        view = SimpleView(timeout=50)
+        view = SimpleView(bot_client=bot,timeout=50)
         #NOTE:   insert prompt call here later for when user asks for prompt
         message = await ctx.send(view=view)
         view.message = message
