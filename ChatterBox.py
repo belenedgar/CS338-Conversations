@@ -9,7 +9,7 @@ from openai_func import get_prompt
 #from textblob import TextBlob
     
 logger = settings.logging.getLogger("bot")
-
+client = OpenAI(api_key="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")
 class SimpleView(discord.ui.View):
     
     foo : bool = None
@@ -23,10 +23,13 @@ class SimpleView(discord.ui.View):
         await self.message.channel.send("Timedout")
         await self.disable_all_items()
     
+
     @discord.ui.button(label="Prompt", 
                        style=discord.ButtonStyle.primary)
     async def hello(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("Example prompt here")
+        #NOTE: ask user for likes to personalize prompt starter
+        prompt = get_prompt("",client,200)
+        await interaction.response.send_message("Here are some prompts to start up the conversation: \n"+prompt)
         self.foo = True
         self.stop()
         
@@ -34,6 +37,8 @@ class SimpleView(discord.ui.View):
                        style=discord.ButtonStyle.secondary)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_message("Good or Bad?")
+        #Take in user input 
+        #
         self.foo = False
         self.stop()
         
@@ -41,7 +46,7 @@ def run():
     intents = discord.Intents.default()
     intents.message_content = True
     #create a client for openAI
-    client = OpenAI(api_key="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")
+    
     data = []
     bot = commands.Bot(command_prefix="!", intents=intents)
     
@@ -75,7 +80,7 @@ def run():
             #check if timestamps are valid ?
                 #maybe make a front end site with toggles to turn certain features on/off before running bot (only if we run out of stuff to add/have time lol)
             prompt = get_prompt(data,client,200)
-            await message.channel.send("Here is a prompt for conversation based on messages in the chat:\n"+ prompt)
+            await message.channel.send("Here are some prompts for conversation based on messages in the chat:\n"+ prompt)
             #we should reset data here to be empty array again so we arent passing irrelevant messages to openai
             data.clear()
 
@@ -124,8 +129,7 @@ def run():
     @bot.command() #can later change this to be a call to OpenAI
     async def short_message(channel):
         await channel.send("You sent a short message! Try adding more details.")
-        
-        
+         
         
     bot.run(settings.DISCORD_API_SECRET, root_logger=True)
 
