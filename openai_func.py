@@ -9,12 +9,12 @@ def create_openai_input(message_data,word_limit):
     """
 
     ## convert message data from list to string
-    if message_data == None or message_data == "":
+    if message_data == None or message_data == "" or message_data == []:
         #can change to be more specific later
         input = "Create a prompt or topic to start a converation with friends"
         return input
     else:
-        return f'Create a prompt/topic to keep the conversation going with sender(s) (signified with userid numbers before lists of messages) for the user in {word_limit} words or less building off of the following messages from the chat: {message_data}'
+        return f'Create a prompt/topic to keep the conversation going with sender(s) for the user in {word_limit} words or less building off of the following messages from the chat (DONT GIVE IT TO ME AS A MESSAGE,put in suggestion format): {message_data}'
 
 def get_prompt(message_data,client,max_tokens):
 
@@ -28,7 +28,7 @@ def get_prompt(message_data,client,max_tokens):
     # Clarify which messages are from sender and which are from user
     
     #call create_openai_input()
-    input = create_openai_input(message_data,20)
+    input = create_openai_input(message_data,50)
     print("input",input)
     if input == None or input == "":
         print("Unable to retrieve input based on data")
