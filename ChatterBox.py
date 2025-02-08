@@ -1,5 +1,5 @@
 #CREDIT: Richard Shwabe
-
+# TODO : give bot permission to create threads
 import settings
 import discord 
 from discord.ext import commands
@@ -19,8 +19,9 @@ class SimpleView(discord.ui.View):
         self.bot_client = bot_client # store bot_client instance
         self.timeout = timeout
         self.foo= None
+        #TODO: might need to add self.threads here or change button function approach to send messages to user in private thread
 
-    #foo : bool = None
+    #foo : bool = None # moved to init func
     
     async def disable_all_items(self):
         for item in self.children:
@@ -46,12 +47,13 @@ class SimpleView(discord.ui.View):
             #save user's response and generate a prompt based on it 
             user_response = await self.bot_client.wait_for("message",check = check, timeout = 50.0) # timeout is set to 50 sec
             prompt = get_prompt(user_response.content, client, 100,button_pressed=True)
-        
+            #TODO : ADD CODE TO MESSAGE USER IN SEPARATE CHAT
             #send user prompts
             await interaction.followup.send("Here are some prompts to start up the conversation: \n"+prompt)
 
         except asyncio.TimeoutError:
           #IF USER TAKES TOO LONG TO RESPOND, TIME OUT
+          #TODO : ADD CODE TO MESSAGE USER IN SEPARATE CHAT
           await interaction.followup.send("Button Response Timed out")    
         self.foo = True
         self.stop()
@@ -71,8 +73,11 @@ class SimpleView(discord.ui.View):
             blob = TextBlob(user_feedback.content)
             sentiment = blob.sentiment.polarity  # Sentiment value between -1 (negative) and 1 (positive)
             # Send a response with sentiment analysis result
+
+            #TODO : ADD CODE TO MESSAGE USER IN SEPARATE CHAT
             if sentiment > 0:
                 #This message is positive!
+
                 await interaction.followup.send("Thank you for your feedback! We are glad you are enjoying using ChatterBox and will use your feedback to make sure you continue to enjoy using our system :) ")
                 
             elif sentiment < 0:
@@ -92,9 +97,9 @@ class SimpleView(discord.ui.View):
 def run():
     intents = discord.Intents.default()
     intents.message_content = True
-    #create a client for openAI
     
     data = []
+    threads={}
     bot = commands.Bot(command_prefix="!", intents=intents)
     
     @bot.event 
@@ -106,29 +111,45 @@ def run():
         # Ignore bot messages to prevent infinite loops
         if message.author.bot:
             return
-        
+        #TODO : ADD CODE TO MESSAGE USER IN SEPARATE CHAT
         message.content = message.content.lower()
         #TODO: Update this to not track responses to the !button call
         if message.content != "!button":
             data.append(message.content)
-
+        print(data)
         #track who sent messages
         user_id = message.author.id
+        print(user_id)
         # Get message length
         message_length = len(message.content)
         # Get message timestamp
         timestamp = message.created_at  # This is in UTC time
-
-        # Send a response with the message length and timestamp
         # await message.channel.send(f"Your message is {message_length} characters long. Sent at {timestamp} UTC." )
             # will be used for indicators of conversation lulls later ^^^
 
         # await message.channel.send(f"ALso here is your data: {data}")
-        if len(data) >= 3:
+        # if conversation lull detected(hardcoded for now)
+        if len(data) >= 4:
             #check if timestamps are valid ?
                 #maybe make a front end site with toggles to turn certain features on/off before running bot (only if we run out of stuff to add/have time lol)
-            prompt = get_prompt(data,client,200)
-            await message.channel.send("Here are some prompts for conversation based on messages in the chat:\n"+ prompt)
+            prompt = get_prompt(data,client,100)
+            #check if user already has separate private channel and set thread to that
+            if user_id in threads:
+                thread = threads[user_id]
+            else:
+                #otherwise create new private thread
+                thread = await message.channel.create_thread(
+                    name = f"{message.author}'s Private Thread",
+                    type=discord.ChannelType.private_thread
+                    
+                )
+                threads[user_id] = thread
+                user_to_invite = message.author
+                await thread.add_user(user_to_invite)
+            print(threads)
+            #send prompt to user's individual thread
+            await thread.send("Here are some prompts for conversation based on messages in the chat:\n"+ prompt)
+            
             #we should reset data here to be empty array again so we arent passing irrelevant messages to openai
             data.clear()
 
@@ -156,9 +177,10 @@ def run():
     @bot.command()
     #looks for when user presses button
     async def button(ctx): #name of user command
-        #S
+        #initialize buttons with init function defined in class
         view = SimpleView(bot_client=bot,timeout=50)
         #NOTE:   insert prompt call here later for when user asks for prompt
+        # TODO: maybe move prompt sending functionality to here
         message = await ctx.send(view=view)
         view.message = message
         
