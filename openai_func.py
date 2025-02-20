@@ -33,33 +33,44 @@ def create_openai_input(message_data,word_limit,button_pressed=False):
     # )
 
     #SHORT:
-    guidelines = (
-        "You are a conversational AI that offers prompts or ideas for what the user could say next to engage in natural, empathetic conversations. "
-        "You DO NOT speak for the user.\n"
-        "Follow these guidelines and provide the suggestions as distinct options, formatted as a list\n"
-        "1. Let the conversation flow naturally without forcing a topic.\n"
-        "2. Agree and build on ideas with 'Yes, and...' or 'Yes, but...' for constructive dialogue.\n"
-        "3. Analyze the user’s tone and context to gauge emotions and respond empathetically to underlying intentions.\n"
-        "4. Ask specific questions, use leading statements, and go for depth not breadth.\n"
-        "5. Keep discussions dynamic by smoothly transitioning topics before they become stale.\n"
-        "6. Prioritize the user's interests over your own\n"
-        "7. Bring back earlier details to create continuity; Callbacks\n"
-        "8. Share personal experiences, thoughtful perspectives, or metaphors that relate to the topic at hand.\n"
-        "9. Be observant and adjust style based on the user's cues.\n"
-    )
+    # guidelines = (
+    #     "You are a conversational AI that offers prompts or ideas for what the user could say next to engage in natural, empathetic conversations. "
+    #     "You DO NOT speak for the user.\n"
+    #     "Follow these guidelines and provide the suggestions as distinct options, formatted as a list\n"
+    #     "1. Let the conversation flow naturally without forcing a topic.\n"
+    #     "2. Agree and build on ideas with 'Yes, and...' or 'Yes, but...' for constructive dialogue.\n"
+    #     "3. Analyze the user’s tone and context to gauge emotions and respond empathetically to underlying intentions.\n"
+    #     "4. Ask specific questions, use leading statements, and go for depth not breadth.\n"
+    #     "5. Keep discussions dynamic by smoothly transitioning topics before they become stale.\n"
+    #     "6. Prioritize the user's interests over your own\n"
+    #     "7. Bring back earlier details to create continuity; Callbacks\n"
+    #     "8. Share personal experiences, thoughtful perspectives, or metaphors that relate to the topic at hand.\n"
+    #     "9. Be observant and adjust style based on the user's cues.\n"
+    # )
 
 
 
     ## convert message data from list to string
+    # if button_pressed:
+    #     input = "{guidelines}\nCreate a prompt or topic to start a converation with a person/people with the following description: (keep the tone casual and try to put it in prompt/message form instead of message form) " + message_data
+    #     return input
+    # if message_data == None or message_data == "" or message_data == []:
+    #     #can change to be more specific later
+    #     input = "{guidelines}\nCreate a prompt or topic to start a converation with friends"
+    #     return input
+    # else:
+    #     return f'{guidelines}\nCreate a prompt/topic to keep the conversation going with sender(s) for the user in {word_limit} words or less building off of the following messages from the chat (DONT GIVE IT TO ME AS A MESSAGE,put in suggestion format,keep the tone casual): {message_data}'
+
+    #token friendly test version
     if button_pressed:
-        input = "{guidelines}\nCreate a prompt or topic to start a converation with a person/people with the following description: (keep the tone casual and try to put it in prompt/message form instead of message form) " + message_data
+        input = "Create a prompt or topic to start a converation with a person/people with the following description: (keep the tone casual and try to put it in prompt/message form instead of message form) " + message_data
         return input
     if message_data == None or message_data == "" or message_data == []:
         #can change to be more specific later
-        input = "{guidelines}\nCreate a prompt or topic to start a converation with friends"
+        input = "Create a prompt or topic to start a converation with friends"
         return input
     else:
-        return f'{guidelines}\nCreate a prompt/topic to keep the conversation going with sender(s) for the user in {word_limit} words or less building off of the following messages from the chat (DONT GIVE IT TO ME AS A MESSAGE,put in suggestion format,keep the tone casual): {message_data}'
+        return f'Create a prompt/topic to keep the conversation going with sender(s) for the user in {word_limit} words or less building off of the following messages from the chat (DONT GIVE IT TO ME AS A MESSAGE,put in suggestion format,keep the tone casual): {message_data}'
 
 def get_prompt(message_data,client,max_tokens,button_pressed=False):
 

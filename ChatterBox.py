@@ -12,6 +12,8 @@ from textblob import TextBlob
     
 logger = settings.logging.getLogger("bot")
 client = OpenAI(api_key="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")
+
+
 class SimpleView(discord.ui.View):
     #added an init function to take in the bot_client in order to receive + respond to user messages after button presses
     def __init__(self,bot_client,timeout):
@@ -93,7 +95,17 @@ class SimpleView(discord.ui.View):
 
         self.foo = False
         self.stop()
-        
+
+def lull_algorithm(message_content, buzzwords): #helper function for detecting lulls
+    points = 0
+    if message_content in buzzwords and len(message_content.split()) == 1: #specific low engagement response
+        points += 3
+    elif len(message_content.split()) < 5: #word count
+        points += 1
+    #TO-DO: need to add more factors from google doc
+    return points
+
+
 def run():
     intents = discord.Intents.default()
     intents.message_content = True
@@ -101,6 +113,10 @@ def run():
     data = []
     threads={}
     bot = commands.Bot(command_prefix="!", intents=intents)
+
+    channel_data = {}
+    buzzwords = {"k", "mhm", "sure", "yea", "sounds good", "sg", "oh", "wow", "lmao", "no",
+             "yes", "thats crazy", "thats cool", "yup", "gtg"}
     
     @bot.event 
     async def on_ready():
@@ -108,6 +124,11 @@ def run():
 
     @bot.event
     async def on_message(message):
+        channel_id = message.channel.id  # Get the channel ID
+
+        if channel_id not in channel_data: #for a specific channel keeps track of "lull data"
+            channel_data[channel_id] = {"m_count": 0, "threshold": 0}
+
         # Ignore bot messages to prevent infinite loops
         if message.author.bot:
             return
@@ -117,6 +138,8 @@ def run():
         if message.content != "!button":
             data.append(message.content)
         print(data)
+
+
         #track who sent messages
         user_id = message.author.id
         print(user_id)
@@ -128,11 +151,22 @@ def run():
             # will be used for indicators of conversation lulls later ^^^
 
         # await message.channel.send(f"ALso here is your data: {data}")
-        # if conversation lull detected(hardcoded for now)
-        if len(data) >= 4:
+        
+        # updating "points"
+        channel_data[channel_id]["m_count"] += 1
+        channel_data[channel_id]["threshold"] += lull_algorithm(message.content, buzzwords) #call helper function
+
+        m_count = channel_data[channel_id]["m_count"]
+        threshold = channel_data[channel_id]["threshold"]
+
+        # log to keep track of current message count and threshold
+        print(f"Channel {channel_id}: m_count: {m_count}, threshold: {threshold}")
+            
+        #conversation lull threshold detected
+        if threshold > 4:
             #check if timestamps are valid ?
                 #maybe make a front end site with toggles to turn certain features on/off before running bot (only if we run out of stuff to add/have time lol)
-            prompt = get_prompt(data,client,100)
+            prompt = get_prompt(data, client, 50)
             #check if user already has separate private channel and set thread to that
             if user_id in threads:
                 thread = threads[user_id]
@@ -152,23 +186,15 @@ def run():
             
             #we should reset data here to be empty array again so we arent passing irrelevant messages to openai
             data.clear()
+            # Reset threshold and message count
+            channel_data[channel_id]["threshold"] = 0
+            channel_data[channel_id]["m_count"] = 0
+            # threshold = 0
+            # m_count = 0
 
-        # looking for short messages    
-        #if message_length < 20:
-           # await short_message(message.channel)
-            #TextBlob can also lemmatize words before sending to OpenAI if helpful
-
-
-        #analyze message sentiment
-        # blob = TextBlob(message.content)
-        # sentiment = blob.sentiment.polarity  # Sentiment value between -1 (negative) and 1 (positive)
-        # # Send a response with sentiment analysis result
-        # if sentiment > 0:
-        #     await message.channel.send("This message is positive!")
-        # elif sentiment < 0:
-        #     await message.channel.send("Careful, your tone is sounding negative!")
-        # else:
-        #     await message.channel.send("This message is neutral!")
+        if m_count == 10:
+            channel_data[channel_id]["threshold"] = 0
+            channel_data[channel_id]["m_count"] = 0
         
 
         # Ensure other bot commands still work
