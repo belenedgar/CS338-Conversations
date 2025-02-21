@@ -12,7 +12,8 @@ from textblob import TextBlob
     
 logger = settings.logging.getLogger("bot")
 client = OpenAI(api_key="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")
-
+promptSent = False
+threads = {}
 
 class SimpleView(discord.ui.View):
     #added an init function to take in the bot_client in order to receive + respond to user messages after button presses
@@ -39,7 +40,8 @@ class SimpleView(discord.ui.View):
                        style=discord.ButtonStyle.primary)
     async def hello(self, interaction: discord.Interaction, button: discord.ui.Button):
         #TODO: MAKE SURE THE RESPONSE TO BUTTON DOES NOT GET ADDED TO DATA
-
+        global threads
+        threads[interaction.user.id] = interaction.channel
         # prompt user to topics they like/ who they are talking to
         await interaction.response.send_message("Describe who you are trying to start a conversation with")
         #function to ensure the message came from the intended user + the correct channel
@@ -51,7 +53,13 @@ class SimpleView(discord.ui.View):
             prompt = get_prompt(user_response.content, client, 100,button_pressed=True)
             #TODO : ADD CODE TO MESSAGE USER IN SEPARATE CHAT
             #send user prompts
+            global promptSent
+            promptSent = True
+            # print("prompt sent = ",promptSent)
             await interaction.followup.send("Here are some prompts to start up the conversation: \n"+prompt)
+            # print("prompt sent = ",promptSent)
+            
+
 
         except asyncio.TimeoutError:
           #IF USER TAKES TOO LONG TO RESPOND, TIME OUT
@@ -111,7 +119,8 @@ def run():
     intents.message_content = True
     
     data = []
-    threads={}
+    global threads
+
     bot = commands.Bot(command_prefix="!", intents=intents)
 
     channel_data = {}
@@ -124,11 +133,20 @@ def run():
 
     @bot.event
     async def on_message(message):
+        global promptSent
+        
+
         channel_id = message.channel.id  # Get the channel ID
 
         if channel_id not in channel_data: #for a specific channel keeps track of "lull data"
             channel_data[channel_id] = {"m_count": 0, "threshold": 0}
 
+        if promptSent == True:
+            channel_data[channel_id]["threshold"] = 0
+            channel_data[channel_id]["m_count"] = 0
+            print("reset threshold and m count")
+            promptSent = False
+        # print("(onmess1)prompt sent = ",promptSent)
         # Ignore bot messages to prevent infinite loops
         if message.author.bot:
             return
@@ -180,6 +198,9 @@ def run():
                 threads[user_id] = thread
                 user_to_invite = message.author
                 await thread.add_user(user_to_invite)
+       
+            promptSent = True
+            # print("(onmessage2)prompt sent = ",promptSent)
             print(threads)
             #send prompt to user's individual thread
             await thread.send("Here are some prompts for conversation based on messages in the chat:\n"+ prompt)
