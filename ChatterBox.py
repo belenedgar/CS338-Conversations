@@ -10,8 +10,9 @@ from openai_func import get_prompt
 import asyncio
 from textblob import TextBlob
     
+   #GLOBALS 
 logger = settings.logging.getLogger("bot")
-client = OpenAI(api_key="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")
+client = OpenAI(api_key=settings.OPENAI_API_TOKEN)
 promptSent = False
 threads = {}
 
@@ -123,9 +124,19 @@ def run():
 
     bot = commands.Bot(command_prefix="!", intents=intents)
 
-    channel_data = {}
+    channel_data={}
     buzzwords = {"k", "mhm", "sure", "yea", "sounds good", "sg", "oh", "wow", "lmao", "no",
              "yes", "thats crazy", "thats cool", "yup", "gtg"}
+    
+#helper to get members in a channel TODO : NEED TO ENABLE Intents.members in bot permissions to get member list
+    # async def get_members(channel):
+    #     members = []
+    #     async for member in channel.guild.fetch_members(limit=None):
+    #     #for member in channel.members:
+    #         members.append(member.name)
+    #     print(f"{len(members)} Users in thread '{channel.name}': {', '.join(members)}")
+        
+    #     return members
     
     @bot.event 
     async def on_ready():
@@ -134,30 +145,42 @@ def run():
     @bot.event
     async def on_message(message):
         global promptSent
-        
-
+    
         channel_id = message.channel.id  # Get the channel ID
-
+        
         if channel_id not in channel_data: #for a specific channel keeps track of "lull data"
             channel_data[channel_id] = {"m_count": 0, "threshold": 0}
 
+        #right now need to reset tresholds of all channels, consider keeping track of the "main" channel in a global and resetting that threshold every time
+        # resets threshold and m_count of all channels after the prompt button is pressed
         if promptSent == True:
-            channel_data[channel_id]["threshold"] = 0
-            channel_data[channel_id]["m_count"] = 0
+            for id in channel_data.keys():
+                data.clear()
+                channel_data[id]["threshold"] = 0
+                channel_data[id]["m_count"] = 0
+            print(channel_data)
             print("reset threshold and m count")
             promptSent = False
+            return
         # print("(onmess1)prompt sent = ",promptSent)
         # Ignore bot messages to prevent infinite loops
         if message.author.bot:
             return
+        # if message.channel.type == discord.ChannelType.private_thread:
+        #     return
         #TODO : ADD CODE TO MESSAGE USER IN SEPARATE CHAT
         message.content = message.content.lower()
         #TODO: Update this to not track responses to the !button call
-        if message.content != "!button":
+        # do not add data from private threads
+
+        # members = await get_members(message.channel)
+        
+
+        if message.content != "!button" and message.channel.type != discord.ChannelType.private_thread:
             data.append(message.content)
         print(data)
-
-
+        #do not track any data fom private threads (TODO : CHANGE THIS TO NOT TRACK DATA FROM THREADS WITH 2 USERS WHERE ONE USER IS User: ChatterBox#6560 (ID: 1333896217524043927))
+        
         #track who sent messages
         user_id = message.author.id
         print(user_id)
@@ -170,52 +193,54 @@ def run():
 
         # await message.channel.send(f"ALso here is your data: {data}")
         
-        # updating "points"
-        channel_data[channel_id]["m_count"] += 1
-        channel_data[channel_id]["threshold"] += lull_algorithm(message.content, buzzwords) #call helper function
+        
+        if message.channel.type != discord.ChannelType.private_thread:
+            # updating "points"
+            channel_data[channel_id]["m_count"] += 1
+            channel_data[channel_id]["threshold"] += lull_algorithm(message.content, buzzwords) #call helper function
 
-        m_count = channel_data[channel_id]["m_count"]
-        threshold = channel_data[channel_id]["threshold"]
+            m_count = channel_data[channel_id]["m_count"]
+            threshold = channel_data[channel_id]["threshold"]
 
-        # log to keep track of current message count and threshold
-        print(f"Channel {channel_id}: m_count: {m_count}, threshold: {threshold}")
-            
-        #conversation lull threshold detected
-        if threshold > 4:
-            #check if timestamps are valid ?
-                #maybe make a front end site with toggles to turn certain features on/off before running bot (only if we run out of stuff to add/have time lol)
-            prompt = get_prompt(data, client, 50)
-            #check if user already has separate private channel and set thread to that
-            if user_id in threads:
-                thread = threads[user_id]
-            else:
-                #otherwise create new private thread
-                thread = await message.channel.create_thread(
-                    name = f"{message.author}'s Private Thread",
-                    type=discord.ChannelType.private_thread
-                    
-                )
-                threads[user_id] = thread
-                user_to_invite = message.author
-                await thread.add_user(user_to_invite)
-       
-            promptSent = True
-            # print("(onmessage2)prompt sent = ",promptSent)
-            print(threads)
-            #send prompt to user's individual thread
-            await thread.send("Here are some prompts for conversation based on messages in the chat:\n"+ prompt)
-            
-            #we should reset data here to be empty array again so we arent passing irrelevant messages to openai
-            data.clear()
-            # Reset threshold and message count
-            channel_data[channel_id]["threshold"] = 0
-            channel_data[channel_id]["m_count"] = 0
-            # threshold = 0
-            # m_count = 0
+            # log to keep track of current message count and threshold
+            print(f"Channel {channel_id}: m_count: {m_count}, threshold: {threshold}")
+                
+            #conversation lull threshold detected
+            if threshold > 4:
+                #check if timestamps are valid ?
+                    #maybe make a front end site with toggles to turn certain features on/off before running bot (only if we run out of stuff to add/have time lol)
+                prompt = get_prompt(data, client, 50)
+                #check if user already has separate private channel and set thread to that
+                if user_id in threads:
+                    thread = threads[user_id]
+                else:
+                    #otherwise create new private thread
+                    thread = await message.channel.create_thread(
+                        name = f"{message.author}'s Private Thread",
+                        type=discord.ChannelType.private_thread
+                        
+                    )
+                    threads[user_id] = thread
+                    user_to_invite = message.author
+                    await thread.add_user(user_to_invite)
+        
+                promptSent = True
+                # print("(onmessage2)prompt sent = ",promptSent)
+                print(threads)
+                #send prompt to user's individual thread
+                await thread.send("Here are some prompts for conversation based on messages in the chat:\n"+ prompt)
+                
+                #we should reset data here to be empty array again so we arent passing irrelevant messages to openai
+                data.clear()
+                # Reset threshold and message count
+                channel_data[channel_id]["threshold"] = 0
+                channel_data[channel_id]["m_count"] = 0
+                # threshold = 0
+                # m_count = 0
 
-        if m_count == 10:
-            channel_data[channel_id]["threshold"] = 0
-            channel_data[channel_id]["m_count"] = 0
+            if m_count == 10:
+                channel_data[channel_id]["threshold"] = 0
+                channel_data[channel_id]["m_count"] = 0
         
 
         # Ensure other bot commands still work
