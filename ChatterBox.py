@@ -125,7 +125,7 @@ def run():
     bot = commands.Bot(command_prefix="!", intents=intents)
 
     channel_data={}
-    buzzwords = {"k", "mhm", "sure", "yea", "sounds good", "sg", "oh", "wow", "lmao", "no",
+    buzzwords = {"k", "mhm", "sure", "yea", "true", "sounds good", "sg", "oh", "wow", "lmao", "no",
              "yes", "thats crazy", "thats cool", "yup", "gtg"}
     
 #helper to get members in a channel TODO : NEED TO ENABLE Intents.members in bot permissions to get member list
@@ -147,7 +147,7 @@ def run():
         global promptSent
     
         channel_id = message.channel.id  # Get the channel ID
-        
+        print("user_id: ",message.author.id,message.author)
         if channel_id not in channel_data: #for a specific channel keeps track of "lull data"
             channel_data[channel_id] = {"m_count": 0, "threshold": 0}
 
@@ -209,7 +209,7 @@ def run():
             if threshold > 4:
                 #check if timestamps are valid ?
                     #maybe make a front end site with toggles to turn certain features on/off before running bot (only if we run out of stuff to add/have time lol)
-                prompt = get_prompt(data, client, 50)
+                prompt = get_prompt(data, client, 100)
                 #check if user already has separate private channel and set thread to that
                 if user_id in threads:
                     thread = threads[user_id]
