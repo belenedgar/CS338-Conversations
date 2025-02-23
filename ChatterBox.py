@@ -102,7 +102,7 @@ def lull_algorithm(message_content, buzzwords): #helper function for detecting l
         points += 3
     elif len(message_content.split()) < 5: #word count
         points += 1
-    #TO-DO: need to add more factors from google doc
+    #TO-DO: need to add more factors from google doc(timestamp, attaching userid to messages)
     return points
 
 
@@ -112,6 +112,7 @@ def run():
     
     data = []
     threads={}
+    user_timestamps = {}
     bot = commands.Bot(command_prefix="!", intents=intents)
 
     channel_data = {}
@@ -143,15 +144,22 @@ def run():
         #track who sent messages
         user_id = message.author.id
         print(user_id)
-        # Get message length
-        message_length = len(message.content)
+        
         # Get message timestamp
-        timestamp = message.created_at  # This is in UTC time
+        current_time = message.created_at  # This is in UTC time
         # await message.channel.send(f"Your message is {message_length} characters long. Sent at {timestamp} UTC." )
             # will be used for indicators of conversation lulls later ^^^
-
+        if user_id in user_timestamps: 
+            last_time = user_timestamps[user_id]
+            gap_seconds = (current_time - last_time).total_seconds()
+            if gap_seconds > 600: 
+                channel_data[channel_id]["threshold"] += 1
+                print(f"Added 1 point for time gap ({gap_seconds} seconds) from user {user_id}")
+            user_timestamps[user_id] = current_time
         # await message.channel.send(f"ALso here is your data: {data}")
-        
+        # Get message length
+        message_length = len(message.content)
+        timestamp = message.created_at
         # updating "points"
         channel_data[channel_id]["m_count"] += 1
         channel_data[channel_id]["threshold"] += lull_algorithm(message.content, buzzwords) #call helper function
