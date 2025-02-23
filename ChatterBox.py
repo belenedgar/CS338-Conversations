@@ -9,6 +9,8 @@ from openai_func import get_prompt
 # for timeout errors
 import asyncio
 from textblob import TextBlob
+import asyncio 
+from datetime import datetime, timezone
     
 logger = settings.logging.getLogger("bot")
 client = OpenAI(api_key="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")
@@ -111,9 +113,21 @@ def run():
     intents.message_content = True
     
     data = []
-    threads={}
-    user_timestamps = {}
+    last_message_time = {}
+    channel_data = {}
+    GAP_THRESHOLD = 600
     bot = commands.Bot(command_prefix="!", intents=intents)
+
+    async def inactivity_checker(channel_id): 
+        while True: 
+            await asyncio.sleep(10)
+            if channel_id in last_message_time: 
+                current_time = datetime.now(timezone.utc)
+                gap_seconds = (current_time - last_message_time[channel_id]).total_seconds()
+                if gap_seconds > GAP_THRESHOLD:
+                    channel_data[channel_id]["threshold"] += 1
+                    print(f"[Auto-check] Added 1 point for inactivity in channel {channel_id} (gap: {gap_seconds} seconds)")
+                    last_message_time[channel_id] = current_time
 
     channel_data = {}
     buzzwords = {"k", "mhm", "sure", "yea", "sounds good", "sg", "oh", "wow", "lmao", "no",
@@ -129,7 +143,7 @@ def run():
 
         if channel_id not in channel_data: #for a specific channel keeps track of "lull data"
             channel_data[channel_id] = {"m_count": 0, "threshold": 0}
-
+            bot.loop.create_task(inactivity_checker(channel_id))
         # Ignore bot messages to prevent infinite loops
         if message.author.bot:
             return
@@ -149,13 +163,13 @@ def run():
         current_time = message.created_at  # This is in UTC time
         # await message.channel.send(f"Your message is {message_length} characters long. Sent at {timestamp} UTC." )
             # will be used for indicators of conversation lulls later ^^^
-        if user_id in user_timestamps: 
-            last_time = user_timestamps[user_id]
+        if channel_id in last_message_time: 
+            last_time = last_message_time[channel_id]
             gap_seconds = (current_time - last_time).total_seconds()
-            if gap_seconds > 600: 
+            if gap_seconds > GAP_THRESHOLD:
                 channel_data[channel_id]["threshold"] += 1
-                print(f"Added 1 point for time gap ({gap_seconds} seconds) from user {user_id}")
-            user_timestamps[user_id] = current_time
+                print(f"Added 1 point for time gap ({gap_seconds} seconds) in channel {channel_id}")
+            last_message_time[channel_id] = current_time
         # await message.channel.send(f"ALso here is your data: {data}")
         # Get message length
         message_length = len(message.content)
