@@ -13,7 +13,55 @@ def create_openai_input(message_data,word_limit,button_pressed=False):
 
     """
 
+    # Guidelines for conversational flow
+
+    #LONG:
+    # guidelines = (
+    #     "You are a conversational AI designed to provide suggestions for how the user could engage in natural, dynamic, and empathetic conversations."
+    #     "You are NOT speaking for the user. Instead, you offer helpful prompts or ideas for what the user could say next. "
+    #     "Follow these guidelines:\n"
+    #     "1. Spontaneity and Flow: Let the conversation evolve organically without steering it toward a specific goal or topic.\n"
+    #     "2. Agreement and Contribution: Respond by agreeing and adding meaningful continuation. Use 'Yes, and…' or 'Yes, but…' for constructive expansion.\n"
+    #     "3. Read and React with Empathy: Analyze the user’s tone and context to gauge emotions. Respond empathetically and acknowledge underlying intentions.\n"
+    #     "4. Be Specific and Detailed: Provide vivid, relatable details. Use leading statements to encourage deeper engagement and avoid broad questions.\n"
+    #     "5. Never Lead with 'No': Avoid shutting down ideas. If needed, use 'Yes, but…' to introduce alternate perspectives.\n"
+    #     "6. Create Motion: Keep the conversation dynamic by smoothly transitioning topics before they become stale.\n"
+    #     "7. Spotlight on the User: Focus on the user’s interests. Ask open-ended questions and reflect on their statements.\n"
+    #     "8. Reincorporate and Connect: Revisit specific details from earlier in the conversation to create continuity.\n"
+    #     "9. Depth through History, Philosophy, and Metaphor: Relate to personal experiences, share thoughtful perspectives, or use metaphors for clarity.\n"
+    #     "10. Presence and Observation: Stay fully engaged by picking up on subtext and conversational cues. Adjust style and depth based on user feedback.\n"
+    # )
+
+    #SHORT:
+    # guidelines = (
+    #     "You are a conversational AI that offers prompts or ideas for what the user could say next to engage in natural, empathetic conversations. "
+    #     "You DO NOT speak for the user.\n"
+    #     "Follow these guidelines and provide the suggestions as distinct options, formatted as a list\n"
+    #     "1. Let the conversation flow naturally without forcing a topic.\n"
+    #     "2. Agree and build on ideas with 'Yes, and...' or 'Yes, but...' for constructive dialogue.\n"
+    #     "3. Analyze the user’s tone and context to gauge emotions and respond empathetically to underlying intentions.\n"
+    #     "4. Ask specific questions, use leading statements, and go for depth not breadth.\n"
+    #     "5. Keep discussions dynamic by smoothly transitioning topics before they become stale.\n"
+    #     "6. Prioritize the user's interests over your own\n"
+    #     "7. Bring back earlier details to create continuity; Callbacks\n"
+    #     "8. Share personal experiences, thoughtful perspectives, or metaphors that relate to the topic at hand.\n"
+    #     "9. Be observant and adjust style based on the user's cues.\n"
+    # )
+
+
+
     ## convert message data from list to string
+    # if button_pressed:
+    #     input = "{guidelines}\nCreate a prompt or topic to start a converation with a person/people with the following description: (keep the tone casual and try to put it in prompt/message form instead of message form DO NOT GIVE IT IN THE FORM OF A TEXT GIVE MULTIPLE PROMPTS IN THE FORM OF'you should talk about...','try asking about...') " + message_data
+    #     return input
+    # if message_data == None or message_data == "" or message_data == []:
+    #     #can change to be more specific later
+    #     input = "{guidelines}\nCreate a prompt or topic to start a converation with friends"
+    #     return input
+    # else:
+    #     return f'{guidelines}\nCreate a prompt/topic to keep the conversation going with sender(s) for the user in {word_limit} words or less building off of the following messages from the chat (DONT GIVE IT TO ME AS A MESSAGE,put in suggestion format NOT ACTUAL TEXTS TO SEND,keep the tone casual): {message_data}'
+
+    #token friendly test version
     if button_pressed:
         input = "Create a prompt or topic to start a converation with a person/people with the following description: (keep the tone casual and try to put it in prompt/message form instead of message form) " + message_data
         return input
@@ -38,10 +86,14 @@ def get_prompt(message_data,client,max_tokens,button_pressed=False):
     # Clarify which messages are from sender and which are from user
     
     #call create_openai_input()
+    string = ""
+    for entry in message_data:
+        string += entry['user_id'] + ': ' + entry['message'] + '\n'
+    print("String: ", string)
     if button_pressed:
-        input = create_openai_input(message_data,60,button_pressed=True)
+        input = create_openai_input(string,60,button_pressed=True)
     else:
-        input = create_openai_input(message_data,70)
+        input = create_openai_input(string,70)
     print("input",input)
     if input == None or input == "":
         print("Unable to retrieve input based on data")
@@ -53,6 +105,10 @@ def get_prompt(message_data,client,max_tokens,button_pressed=False):
         store = True,
         max_tokens = max_tokens,
         messages = [
+            {"role": "system", "content": (
+                "You are a conversational AI designed to engage in natural, dynamic, and empathetic conversations. "
+                "Follow the guidelines provided to enhance conversational flow and engagement."
+            )},
             
             {"role": "user", "content": input} 
         ]
