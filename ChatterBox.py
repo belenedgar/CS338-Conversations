@@ -1,6 +1,7 @@
 #CREDIT: Richard Shwabe
 # TODO : give bot permission to create threads
 import settings
+import certifi
 import discord 
 from discord.ext import commands
 import utils
@@ -9,6 +10,8 @@ from openai_func import get_prompt
 # for timeout errors
 import asyncio
 from textblob import TextBlob
+
+print("CERTIFICATE: ", certifi.where())
     
    #GLOBALS 
 logger = settings.logging.getLogger("bot")
@@ -119,10 +122,15 @@ def run():
     intents = discord.Intents.default()
     intents.message_content = True
     
-    data = []
-    global threads
+     # Track which user is sending which message at what time
+    data = {}
 
+    #Just a list of all messages to send to chatgpt
+    messages = []
+    
+    threads={}
     bot = commands.Bot(command_prefix="!", intents=intents)
+    
 
     channel_data={}
     buzzwords = {"k", "mhm", "sure", "yea", "true", "sounds good", "sg", "oh", "wow", "lmao", "no",
@@ -166,81 +174,66 @@ def run():
         # Ignore bot messages to prevent infinite loops
         if message.author.bot:
             return
-        # if message.channel.type == discord.ChannelType.private_thread:
-        #     return
-        #TODO : ADD CODE TO MESSAGE USER IN SEPARATE CHAT
-        message.content = message.content.lower()
-        #TODO: Update this to not track responses to the !button call
-        # do not add data from private threads
-
-        # members = await get_members(message.channel)
-        
-
-        if message.content != "!button" and message.channel.type != discord.ChannelType.private_thread:
-            data.append(message.content)
-        print(data)
-        #do not track any data fom private threads (TODO : CHANGE THIS TO NOT TRACK DATA FROM THREADS WITH 2 USERS WHERE ONE USER IS User: ChatterBox#6560 (ID: 1333896217524043927))
-        
-        #track who sent messages
+       
+        # Assign variables to store in data
         user_id = message.author.id
-        print(user_id)
-        # Get message length
-        message_length = len(message.content)
-        # Get message timestamp
         timestamp = message.created_at  # This is in UTC time
+        message.content = message.content.lower()
+
+        if message.content != "!button":
+            if user_id not in data:
+                data[user_id] = [{'message': message.content, 'timestamp': timestamp}]
+            else:
+                data[user_id].append({'message': message.content, 'timestamp': timestamp})
+            messages.append(message.content)
+        print(data)
+
+      
         # await message.channel.send(f"Your message is {message_length} characters long. Sent at {timestamp} UTC." )
             # will be used for indicators of conversation lulls later ^^^
 
         # await message.channel.send(f"ALso here is your data: {data}")
-        
-        
-        if message.channel.type != discord.ChannelType.private_thread:
-            # updating "points"
-            channel_data[channel_id]["m_count"] += 1
-            channel_data[channel_id]["threshold"] += lull_algorithm(message.content, buzzwords) #call helper function
+        # if conversation lull detected(hardcoded for now)
+        if len(messages) >= 4:
+            #check if timestamps are valid ?
+                #maybe make a front end site with toggles to turn certain features on/off before running bot (only if we run out of stuff to add/have time lol)
+            prompt = get_prompt(messages,client,100)
+            #check if user already has separate private channel and set thread to that
+            if user_id in threads:
+                thread = threads[user_id]
+            else:
+                #otherwise create new private thread
+                thread = await message.channel.create_thread(
+                    name = f"{message.author}'s Private Thread",
+                    type=discord.ChannelType.private_thread
+                    
+                )
+                threads[user_id] = thread
+                user_to_invite = message.author
+                await thread.add_user(user_to_invite)
+            print(threads)
+            #send prompt to user's individual thread
+            await thread.send("Here are some prompts for conversation based on messages in the chat:\n"+ prompt)
+            
+            #we should reset data here to be empty array again so we arent passing irrelevant messages to openai
+            data.clear()
 
-            m_count = channel_data[channel_id]["m_count"]
-            threshold = channel_data[channel_id]["threshold"]
+        # looking for short messages    
+        #if message_length < 20:
+           # await short_message(message.channel)
+            #TextBlob can also lemmatize words before sending to OpenAI if helpful
 
-            # log to keep track of current message count and threshold
-            print(f"Channel {channel_id}: m_count: {m_count}, threshold: {threshold}")
-                
-            #conversation lull threshold detected
-            if threshold > 4:
-                #check if timestamps are valid ?
-                    #maybe make a front end site with toggles to turn certain features on/off before running bot (only if we run out of stuff to add/have time lol)
-                prompt = get_prompt(data, client, 100)
-                #check if user already has separate private channel and set thread to that
-                if user_id in threads:
-                    thread = threads[user_id]
-                else:
-                    #otherwise create new private thread
-                    thread = await message.channel.create_thread(
-                        name = f"{message.author}'s Private Thread",
-                        type=discord.ChannelType.private_thread
-                        
-                    )
-                    threads[user_id] = thread
-                    user_to_invite = message.author
-                    await thread.add_user(user_to_invite)
-        
-                promptSent = True
-                # print("(onmessage2)prompt sent = ",promptSent)
-                print(threads)
-                #send prompt to user's individual thread
-                await thread.send("Here are some prompts for conversation based on messages in the chat:\n"+ prompt)
-                
-                #we should reset data here to be empty array again so we arent passing irrelevant messages to openai
-                data.clear()
-                # Reset threshold and message count
-                channel_data[channel_id]["threshold"] = 0
-                channel_data[channel_id]["m_count"] = 0
-                # threshold = 0
-                # m_count = 0
 
-            if m_count == 10:
-                channel_data[channel_id]["threshold"] = 0
-                channel_data[channel_id]["m_count"] = 0
+        #analyze message sentiment
+        # blob = TextBlob(message.content)
+        # sentiment = blob.sentiment.polarity  # Sentiment value between -1 (negative) and 1 (positive)
+        # # Send a response with sentiment analysis result
+        # if sentiment > 0:
+        #     await message.channel.send("This message is positive!")
+        # elif sentiment < 0:
+        #     await message.channel.send("Careful, your tone is sounding negative!")
+        # else:
+        #     await message.channel.send("This message is neutral!")
         
 
         # Ensure other bot commands still work
