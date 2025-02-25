@@ -123,7 +123,7 @@ def run():
     intents.message_content = True
     
      # Track which user is sending which message at what time
-    data = {}
+    # data = {}
 
     #Just a list of all messages to send to chatgpt
     messages = []
@@ -163,7 +163,7 @@ def run():
         # resets threshold and m_count of all channels after the prompt button is pressed
         if promptSent == True:
             for id in channel_data.keys():
-                data.clear()
+                # data.clear()
                 channel_data[id]["threshold"] = 0
                 channel_data[id]["m_count"] = 0
             print(channel_data)
@@ -181,12 +181,12 @@ def run():
         message.content = message.content.lower()
 
         if message.content != "!button":
-            if user_id not in data:
-                data[user_id] = [{'message': message.content, 'timestamp': timestamp}]
-            else:
-                data[user_id].append({'message': message.content, 'timestamp': timestamp})
-            messages.append(message.content)
-        print(data)
+            # if user_id not in data:
+            #     data[user_id] = [{'message': message.content, 'timestamp': timestamp}]
+            # else:
+            #     data[user_id].append({'message': message.content, 'timestamp': timestamp})
+            messages.append({'message': message.content, 'user_id': str(user_id), 'channel_id': channel_data[channel_id]})
+
 
       
         # await message.channel.send(f"Your message is {message_length} characters long. Sent at {timestamp} UTC." )
@@ -216,7 +216,7 @@ def run():
             await thread.send("Here are some prompts for conversation based on messages in the chat:\n"+ prompt)
             
             #we should reset data here to be empty array again so we arent passing irrelevant messages to openai
-            data.clear()
+            messages.clear()
 
         # looking for short messages    
         #if message_length < 20:
