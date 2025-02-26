@@ -119,7 +119,7 @@ def run():
     intents = discord.Intents.default()
     intents.message_content = True
     
-    data = []
+    messages = []
     global threads
 
     bot = commands.Bot(command_prefix="!", intents=intents)
@@ -145,7 +145,10 @@ def run():
     @bot.event
     async def on_message(message):
         global promptSent
-    
+        # Ignore bot messages to prevent infinite loops
+        if message.author.bot:
+            return
+        
         channel_id = message.channel.id  # Get the channel ID
         print("user_id: ",message.author.id,message.author)
         if channel_id not in channel_data: #for a specific channel keeps track of "lull data"
@@ -155,7 +158,7 @@ def run():
         # resets threshold and m_count of all channels after the prompt button is pressed
         if promptSent == True:
             for id in channel_data.keys():
-                data.clear()
+                messages.clear()
                 channel_data[id]["threshold"] = 0
                 channel_data[id]["m_count"] = 0
             print(channel_data)
@@ -163,23 +166,13 @@ def run():
             promptSent = False
             return
         # print("(onmess1)prompt sent = ",promptSent)
-        # Ignore bot messages to prevent infinite loops
-        if message.author.bot:
-            return
+        
         # if message.channel.type == discord.ChannelType.private_thread:
         #     return
-        #TODO : ADD CODE TO MESSAGE USER IN SEPARATE CHAT
         message.content = message.content.lower()
-        #TODO: Update this to not track responses to the !button call
+
         # do not add data from private threads
-
         # members = await get_members(message.channel)
-        
-
-        if message.content != "!button" and message.channel.type != discord.ChannelType.private_thread:
-            data.append(message.content)
-        print(data)
-        #do not track any data fom private threads (TODO : CHANGE THIS TO NOT TRACK DATA FROM THREADS WITH 2 USERS WHERE ONE USER IS User: ChatterBox#6560 (ID: 1333896217524043927))
         
         #track who sent messages
         user_id = message.author.id
@@ -193,7 +186,14 @@ def run():
 
         # await message.channel.send(f"ALso here is your data: {data}")
         
+
+        if message.content != "!button" and message.channel.type != discord.ChannelType.private_thread:
+            #NOTE channel_id was previoously not being stored correctly
+            messages.append({'message': message.content, 'user_id': str(user_id), 'channel_id': channel_id})
+
+        #do not track any data fom private threads (TODO : CHANGE THIS TO NOT TRACK DATA FROM THREADS WITH 2 USERS WHERE ONE USER IS User: ChatterBox#6560 (ID: 1333896217524043927))
         
+        #if message was NOT sent in private thread, check if we need to send a prompt
         if message.channel.type != discord.ChannelType.private_thread:
             # updating "points"
             channel_data[channel_id]["m_count"] += 1
@@ -204,12 +204,46 @@ def run():
 
             # log to keep track of current message count and threshold
             print(f"Channel {channel_id}: m_count: {m_count}, threshold: {threshold}")
+
+            ## ------Oh No System:-----
+            if (len(messages) >= 3):
                 
-            #conversation lull threshold detected
+                #get last three users and channels in message array
+                last_three_users = [message['user_id'] for message in messages[-3:]]
+                last_three_channels = [message['channel_id'] for message in messages[-3:]]
+                print(last_three_users)
+                print(last_three_channels)
+                #check if the users and channels are equal
+                if (len(set(last_three_users)) == 1 and len(set(last_three_channels)) == 1):
+                    print("OH NAUR")
+                    prompt = get_prompt(messages,client,100)
+                    #check if user already has separate private channel and set thread to that
+                    if user_id in threads:
+                        thread = threads[user_id]
+                    else:
+                        #otherwise create new private thread
+                        thread = await message.channel.create_thread(
+                            name = f"{message.author}'s Private Thread",
+                            type=discord.ChannelType.private_thread
+                        )
+                        threads[user_id] = thread
+                        user_to_invite = message.author
+                        await thread.add_user(user_to_invite)
+                    print(threads)
+                    #send prompt to user's individual thread
+                    await thread.send("Here are some prompts for conversation based on messages in the chat:\n"+ prompt)
+                    #reset thresholds and messages
+                    messages.clear()
+                    channel_data[channel_id]["threshold"] = 0
+                    channel_data[channel_id]["m_count"] = 0
+                    print(channel_data)
+                    return
+    
+            # ----Lull Point System-----
             if threshold > 4:
                 #check if timestamps are valid ?
                     #maybe make a front end site with toggles to turn certain features on/off before running bot (only if we run out of stuff to add/have time lol)
-                prompt = get_prompt(data, client, 100)
+                prompt = get_prompt(messages, client, 100)
                 #check if user already has separate private channel and set thread to that
                 if user_id in threads:
                     thread = threads[user_id]
@@ -231,7 +265,7 @@ def run():
                 await thread.send("Here are some prompts for conversation based on messages in the chat:\n"+ prompt)
                 
                 #we should reset data here to be empty array again so we arent passing irrelevant messages to openai
-                data.clear()
+                messages.clear()
                 # Reset threshold and message count
                 channel_data[channel_id]["threshold"] = 0
                 channel_data[channel_id]["m_count"] = 0
