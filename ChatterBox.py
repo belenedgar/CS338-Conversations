@@ -105,6 +105,34 @@ class SimpleView(discord.ui.View):
         self.foo = False
         self.stop()
 
+
+class YesNoView(discord.ui.View): #makes the interface better for the user, presses button to opt-in/out of ChatterBox
+    def __init__(self, member, thread, timeout=10):
+        super().__init__(timeout=timeout)
+        self.member = member
+        self.thread = thread
+        self.response = None  # To store the user's response
+        self.timeout = timeout
+
+    @discord.ui.button(label="Yes", style=discord.ButtonStyle.success)
+    async def yes_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user == self.member:
+            self.response = True
+            await interaction.response.send_message("Great! I'll be here to help.")
+            self.stop()
+
+    @discord.ui.button(label="No", style=discord.ButtonStyle.danger)
+    async def no_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user == self.member:
+            self.response = False
+            await self.thread.delete()
+            self.stop()
+
+    async def on_timeout(self): #If the user doesn't respond in 60 sec it deletes the thread --- definitely an issue if users don't look at new server immediately
+        await self.thread.delete()
+        self.stop()
+
+
 def lull_algorithm(message_content, buzzwords): #helper function for detecting lulls
     points = 0
     if message_content in buzzwords and len(message_content.split()) == 1: #specific low engagement response
@@ -115,9 +143,58 @@ def lull_algorithm(message_content, buzzwords): #helper function for detecting l
     return points
 
 
+async def create_private_threads(bot):
+    channel_id = 1333890688357499003  # Hardcorded to our main channel ID, will not work for multiple channels
+    channel = bot.get_channel(channel_id)
+
+    if channel is None:
+        print(f"Error: Channel with ID {channel_id} not found.")
+        return
+
+    print("Starting create_private_threads...")
+    for guild in bot.guilds:
+        for member in guild.members: #loops through members, so doesn't move on until user says yes/no or it times out
+            print(f"Processing guild: {guild.name}")
+            print(f"Guild Member Count: {len(guild.members)}")
+            if not member.bot:
+                print(f" Attempting thread for: {member.name}")
+                try:
+                    thread = await channel.create_thread(
+                        name=f"ChatterBox - {member.display_name}",
+                        type=discord.ChannelType.private_thread
+                    )
+                    await thread.add_user(member)
+                    view = YesNoView(member, thread)
+                    await thread.send(f"Hello {member.display_name}! I'm ChatterBox, your conversational assistant! \n\n My job is to track your conversations in the main channel and if I detect the conversation is dying down I'll send you suggestions for how to keep the conversation going. You can also request my help on-demand by sending **!button** to our private thread and I'll send you suggestions for what to say. \n\nWould you like to use my services?", view=view)
+                    await view.wait()
+                    if view.response is True:
+                        threads[member.id] = thread
+
+                    # def check(message):
+                    #     return message.author == member and message.channel == thread
+
+                    # try:
+                    #     response = await bot.wait_for("message", check=check, timeout=60.0)
+                    #     if response.content.lower() in ("yes", "y"):
+                    #         threads[member.id] = thread
+                    #         await thread.send("Great! I'll be here to help.")
+                    #     else:
+                    #         await thread.delete()
+                    # except asyncio.TimeoutError:
+                    #     await thread.delete()
+
+                    print("done")
+                except discord.Forbidden:
+                    print(f"Cannot create thread for {member.name} in {guild.name}")
+                except Exception as e:
+                    print(f"Error creating thread for {member.name}: {e}")
+
+
 def run():
     intents = discord.Intents.default()
     intents.message_content = True
+    intents.members = True
+    ("notified all members")
     
     messages = []
     global threads
@@ -126,7 +203,8 @@ def run():
 
     channel_data={}
     buzzwords = {"k", "mhm", "sure", "yea", "true", "sounds good", "sg", "oh", "wow", "lmao", "no",
-             "yes", "thats crazy", "thats cool", "yup", "gtg"}
+             "yes", "thats crazy", "thats cool", "yup", "gtg", "lol", "cool", "lit", "bet", "true", "gotcha", "facts",
+             "ok", "okay", "yeah", "yup", "chill", "solid", "sick", "dope", "smh", "dead", "period", "periodt", "good", "fine", "interesting"}
     
 #helper to get members in a channel TODO : NEED TO ENABLE Intents.members in bot permissions to get member list
     # async def get_members(channel):
@@ -141,6 +219,7 @@ def run():
     @bot.event 
     async def on_ready():
         await utils.load_videocmds(bot)
+        await create_private_threads(bot) #when bot starts running-- sends message to each member
 
     @bot.event
     async def on_message(message):
