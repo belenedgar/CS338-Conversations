@@ -12,9 +12,11 @@ from textblob import TextBlob
 import asyncio 
 from datetime import datetime, timezone
     
+   #GLOBALS 
 logger = settings.logging.getLogger("bot")
-client = OpenAI(api_key="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")
-
+client = OpenAI(api_key=settings.OPENAI_API_TOKEN)
+promptSent = False
+threads = {}
 
 class SimpleView(discord.ui.View):
     #added an init function to take in the bot_client in order to receive + respond to user messages after button presses
@@ -25,8 +27,7 @@ class SimpleView(discord.ui.View):
         self.foo= None
         #TODO: might need to add self.threads here or change button function approach to send messages to user in private thread
 
-    #foo : bool = None # moved to init func
-    
+    #foo : bool = None # moved to init fun
     async def disable_all_items(self):
         for item in self.children:
             item.disabled = True
@@ -41,7 +42,8 @@ class SimpleView(discord.ui.View):
                        style=discord.ButtonStyle.primary)
     async def hello(self, interaction: discord.Interaction, button: discord.ui.Button):
         #TODO: MAKE SURE THE RESPONSE TO BUTTON DOES NOT GET ADDED TO DATA
-
+        global threads
+        threads[interaction.user.id] = interaction.channel
         # prompt user to topics they like/ who they are talking to
         await interaction.response.send_message("Describe who you are trying to start a conversation with")
         #function to ensure the message came from the intended user + the correct channel
@@ -53,7 +55,13 @@ class SimpleView(discord.ui.View):
             prompt = get_prompt(user_response.content, client, 100,button_pressed=True)
             #TODO : ADD CODE TO MESSAGE USER IN SEPARATE CHAT
             #send user prompts
+            global promptSent
+            promptSent = True
+            # print("prompt sent = ",promptSent)
             await interaction.followup.send("Here are some prompts to start up the conversation: \n"+prompt)
+            # print("prompt sent = ",promptSent)
+            
+
 
         except asyncio.TimeoutError:
           #IF USER TAKES TOO LONG TO RESPOND, TIME OUT
@@ -98,6 +106,34 @@ class SimpleView(discord.ui.View):
         self.foo = False
         self.stop()
 
+
+class YesNoView(discord.ui.View): #makes the interface better for the user, presses button to opt-in/out of ChatterBox
+    def __init__(self, member, thread, timeout=10):
+        super().__init__(timeout=timeout)
+        self.member = member
+        self.thread = thread
+        self.response = None  # To store the user's response
+        self.timeout = timeout
+
+    @discord.ui.button(label="Yes", style=discord.ButtonStyle.success)
+    async def yes_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user == self.member:
+            self.response = True
+            await interaction.response.send_message("Great! I'll be here to help.")
+            self.stop()
+
+    @discord.ui.button(label="No", style=discord.ButtonStyle.danger)
+    async def no_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user == self.member:
+            self.response = False
+            await self.thread.delete()
+            self.stop()
+
+    async def on_timeout(self): #If the user doesn't respond in 60 sec it deletes the thread --- definitely an issue if users don't look at new server immediately
+        await self.thread.delete()
+        self.stop()
+
+
 def lull_algorithm(message_content, buzzwords): #helper function for detecting lulls
     points = 0
     if message_content in buzzwords and len(message_content.split()) == 1: #specific low engagement response
@@ -108,15 +144,65 @@ def lull_algorithm(message_content, buzzwords): #helper function for detecting l
     return points
 
 
+async def create_private_threads(bot):
+    channel_id = 1333890688357499003  # Hardcorded to our main channel ID, will not work for multiple channels
+    channel = bot.get_channel(channel_id)
+
+    if channel is None:
+        print(f"Error: Channel with ID {channel_id} not found.")
+        return
+
+    print("Starting create_private_threads...")
+    for guild in bot.guilds:
+        for member in guild.members: #loops through members, so doesn't move on until user says yes/no or it times out
+            print(f"Processing guild: {guild.name}")
+            print(f"Guild Member Count: {len(guild.members)}")
+            if not member.bot:
+                print(f" Attempting thread for: {member.name}")
+                try:
+                    thread = await channel.create_thread(
+                        name=f"ChatterBox - {member.display_name}",
+                        type=discord.ChannelType.private_thread
+                    )
+                    await thread.add_user(member)
+                    view = YesNoView(member, thread)
+                    await thread.send(f"Hello {member.display_name}! I'm ChatterBox, your conversational assistant! \n\n My job is to track your conversations in the main channel and if I detect the conversation is dying down I'll send you suggestions for how to keep the conversation going. You can also request my help on-demand by sending **!button** to our private thread and I'll send you suggestions for what to say. \n\nWould you like to use my services?", view=view)
+                    await view.wait()
+                    if view.response is True:
+                        threads[member.id] = thread
+
+                    # def check(message):
+                    #     return message.author == member and message.channel == thread
+
+                    # try:
+                    #     response = await bot.wait_for("message", check=check, timeout=60.0)
+                    #     if response.content.lower() in ("yes", "y"):
+                    #         threads[member.id] = thread
+                    #         await thread.send("Great! I'll be here to help.")
+                    #     else:
+                    #         await thread.delete()
+                    # except asyncio.TimeoutError:
+                    #     await thread.delete()
+
+                    print("done")
+                except discord.Forbidden:
+                    print(f"Cannot create thread for {member.name} in {guild.name}")
+                except Exception as e:
+                    print(f"Error creating thread for {member.name}: {e}")
+
+
 def run():
     intents = discord.Intents.default()
     intents.message_content = True
+    intents.members = True
+    ("notified all members")
     
-    data = []
-    threads={}
     last_message_time = {}
     channel_data = {}
     GAP_THRESHOLD = 10
+    messages = []
+    global threads
+
     bot = commands.Bot(command_prefix="!", intents=intents)
     """
     for timestamp functionality. an async background function to periodically check each channel for inactivity
@@ -137,34 +223,62 @@ def run():
                     print(f"Channel {channel_id}: m_count: {m_count}, threshold: {threshold}")
                     channel_data[channel_id]["point_added"] = True   #update last message time to avoid adding points repeatedly 
 
-                        #dont add points 
-#uodate data type of messagr array 
-    channel_data = {}
-    buzzwords = {"k", "mhm", "sure", "yea", "sounds good", "sg", "oh", "wow", "lmao", "no",
-             "yes", "thats crazy", "thats cool", "yup", "gtg"}
+
+    channel_data={}
+    buzzwords = {"k", "mhm", "sure", "yea", "true", "sounds good", "sg", "oh", "wow", "lmao", "no",
+             "yes", "thats crazy", "thats cool", "yup", "gtg", "lol", "cool", "lit", "bet", "true", "gotcha", "facts",
+             "ok", "okay", "yeah", "yup", "chill", "solid", "sick", "dope", "smh", "dead", "period", "periodt", "good", "fine", "interesting"}
+    
+#helper to get members in a channel TODO : NEED TO ENABLE Intents.members in bot permissions to get member list
+    # async def get_members(channel):
+    #     members = []
+    #     async for member in channel.guild.fetch_members(limit=None):
+    #     #for member in channel.members:
+    #         members.append(member.name)
+    #     print(f"{len(members)} Users in thread '{channel.name}': {', '.join(members)}")
+        
+    #     return members
     
     @bot.event 
     async def on_ready():
         await utils.load_videocmds(bot)
+        await create_private_threads(bot) #when bot starts running-- sends message to each member
 
     @bot.event
     async def on_message(message):
-        channel_id = message.channel.id  # Get the channel ID
-
-        if channel_id not in channel_data: #for a specific channel keeps track of "lull data"
-            channel_data[channel_id] = {"m_count": 0, "threshold": 0}
-            bot.loop.create_task(inactivity_checker(channel_id))
+        global promptSent
         # Ignore bot messages to prevent infinite loops
         if message.author.bot:
             return
-        #TODO : ADD CODE TO MESSAGE USER IN SEPARATE CHAT
+        
+        channel_id = message.channel.id  # Get the channel ID
+        print("user_id: ",message.author.id,message.author)
+        if channel_id not in channel_data: #for a specific channel keeps track of "lull data"
+            channel_data[channel_id] = {"m_count": 0, "threshold": 0}
+
+            bot.loop.create_task(inactivity_checker(channel_id))
+        # Ignore bot messages to prevent infinite loops
+
+        #right now need to reset tresholds of all channels, consider keeping track of the "main" channel in a global and resetting that threshold every time
+        # resets threshold and m_count of all channels after the prompt button is pressed
+        if promptSent == True:
+            for id in channel_data.keys():
+                messages.clear()
+                channel_data[id]["threshold"] = 0
+                channel_data[id]["m_count"] = 0
+            print(channel_data)
+            print("reset threshold and m count")
+            promptSent = False
+            return
+        # print("(onmess1)prompt sent = ",promptSent)
+        
+        # if message.channel.type == discord.ChannelType.private_thread:
+        #     return
         message.content = message.content.lower()
-        #TODO: Update this to not track responses to the !button call
-        if message.content != "!button":
-            data.append(message.content)
-        print(data)
 
-
+        # do not add data from private threads
+        # members = await get_members(message.channel)
+        
         #track who sent messages
         user_id = message.author.id
         print(user_id)
@@ -186,52 +300,95 @@ def run():
 
     
         # await message.channel.send(f"ALso here is your data: {data}")
-        # Get message length
-        message_length = len(message.content)
-        timestamp = message.created_at
-        # updating "points"
-        channel_data[channel_id]["m_count"] += 1
-        channel_data[channel_id]["threshold"] += lull_algorithm(message.content, buzzwords) #call helper function
 
-        m_count = channel_data[channel_id]["m_count"]
-        threshold = channel_data[channel_id]["threshold"]
+        if message.content != "!button" and message.channel.type != discord.ChannelType.private_thread:
+            #NOTE channel_id was previoously not being stored correctly
+            messages.append({'message': message.content, 'user_id': str(user_id), 'channel_id': channel_id})
 
-        # log to keep track of current message count and threshold
-        print(f"Channel {channel_id}: m_count: {m_count}, threshold: {threshold}")
-            
-        #conversation lull threshold detected
-        if threshold > 4:
-            #check if timestamps are valid ?
-                #maybe make a front end site with toggles to turn certain features on/off before running bot (only if we run out of stuff to add/have time lol)
-            prompt = get_prompt(data, client, 50)
-            #check if user already has separate private channel and set thread to that
-            if user_id in threads:
-                thread = threads[user_id]
-            else:
-                #otherwise create new private thread
-                thread = await message.channel.create_thread(
-                    name = f"{message.author}'s Private Thread",
-                    type=discord.ChannelType.private_thread
-                    
-                )
-                threads[user_id] = thread
-                user_to_invite = message.author
-                await thread.add_user(user_to_invite)
-            print(threads)
-            #send prompt to user's individual thread
-            await thread.send("Here are some prompts for conversation based on messages in the chat:\n"+ prompt)
-            
-            #we should reset data here to be empty array again so we arent passing irrelevant messages to openai
-            data.clear()
-            # Reset threshold and message count
-            channel_data[channel_id]["threshold"] = 0
-            channel_data[channel_id]["m_count"] = 0
-            # threshold = 0
-            # m_count = 0
+        #do not track any data fom private threads (TODO : CHANGE THIS TO NOT TRACK DATA FROM THREADS WITH 2 USERS WHERE ONE USER IS User: ChatterBox#6560 (ID: 1333896217524043927))
+        
+        #if message was NOT sent in private thread, check if we need to send a prompt
+        if message.channel.type != discord.ChannelType.private_thread:
+            # updating "points"
+            channel_data[channel_id]["m_count"] += 1
+            channel_data[channel_id]["threshold"] += lull_algorithm(message.content, buzzwords) #call helper function
 
-        if m_count == 10:
-            channel_data[channel_id]["threshold"] = 0
-            channel_data[channel_id]["m_count"] = 0
+            m_count = channel_data[channel_id]["m_count"]
+            threshold = channel_data[channel_id]["threshold"]
+
+            # log to keep track of current message count and threshold
+            print(f"Channel {channel_id}: m_count: {m_count}, threshold: {threshold}")
+
+            ## ------Oh No System:-----
+            if (len(messages) >= 3):
+                
+                #get last three users and channels in message array
+                last_three_users = [message['user_id'] for message in messages[-3:]]
+                last_three_channels = [message['channel_id'] for message in messages[-3:]]
+                print(last_three_users)
+                print(last_three_channels)
+                #check if the users and channels are equal
+                if (len(set(last_three_users)) == 1 and len(set(last_three_channels)) == 1):
+                    print("OH NAUR")
+                    prompt = get_prompt(messages,client,100)
+                    #check if user already has separate private channel and set thread to that
+                    if user_id in threads:
+                        thread = threads[user_id]
+                    else:
+                        #otherwise create new private thread
+                        thread = await message.channel.create_thread(
+                            name = f"{message.author}'s Private Thread",
+                            type=discord.ChannelType.private_thread
+                        )
+                        threads[user_id] = thread
+                        user_to_invite = message.author
+                        await thread.add_user(user_to_invite)
+                    print(threads)
+                    #send prompt to user's individual thread
+                    await thread.send("Here are some prompts for conversation based on messages in the chat:\n"+ prompt)
+                    #reset thresholds and messages
+                    messages.clear()
+                    channel_data[channel_id]["threshold"] = 0
+                    channel_data[channel_id]["m_count"] = 0
+                    print(channel_data)
+                    return
+    
+            # ----Lull Point System-----
+            if threshold > 4:
+                #check if timestamps are valid ?
+                    #maybe make a front end site with toggles to turn certain features on/off before running bot (only if we run out of stuff to add/have time lol)
+                prompt = get_prompt(messages, client, 100)
+                #check if user already has separate private channel and set thread to that
+                if user_id in threads:
+                    thread = threads[user_id]
+                else:
+                    #otherwise create new private thread
+                    thread = await message.channel.create_thread(
+                        name = f"{message.author}'s Private Thread",
+                        type=discord.ChannelType.private_thread
+                        
+                    )
+                    threads[user_id] = thread
+                    user_to_invite = message.author
+                    await thread.add_user(user_to_invite)
+        
+                promptSent = True
+                # print("(onmessage2)prompt sent = ",promptSent)
+                print(threads)
+                #send prompt to user's individual thread
+                await thread.send("Here are some prompts for conversation based on messages in the chat:\n"+ prompt)
+                
+                #we should reset data here to be empty array again so we arent passing irrelevant messages to openai
+                messages.clear()
+                # Reset threshold and message count
+                channel_data[channel_id]["threshold"] = 0
+                channel_data[channel_id]["m_count"] = 0
+                # threshold = 0
+                # m_count = 0
+
+            if m_count == 10:
+                channel_data[channel_id]["threshold"] = 0
+                channel_data[channel_id]["m_count"] = 0
         
 
         # Ensure other bot commands still work

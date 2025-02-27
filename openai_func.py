@@ -52,14 +52,14 @@ def create_openai_input(message_data,word_limit,button_pressed=False):
 
     ## convert message data from list to string
     # if button_pressed:
-    #     input = "{guidelines}\nCreate a prompt or topic to start a converation with a person/people with the following description: (keep the tone casual and try to put it in prompt/message form instead of message form) " + message_data
+    #     input = "{guidelines}\nCreate a prompt or topic to start a converation with a person/people with the following description: (keep the tone casual and try to put it in prompt/message form instead of message form DO NOT GIVE IT IN THE FORM OF A TEXT GIVE MULTIPLE PROMPTS IN THE FORM OF'you should talk about...','try asking about...') " + message_data
     #     return input
     # if message_data == None or message_data == "" or message_data == []:
     #     #can change to be more specific later
     #     input = "{guidelines}\nCreate a prompt or topic to start a converation with friends"
     #     return input
     # else:
-    #     return f'{guidelines}\nCreate a prompt/topic to keep the conversation going with sender(s) for the user in {word_limit} words or less building off of the following messages from the chat (DONT GIVE IT TO ME AS A MESSAGE,put in suggestion format,keep the tone casual): {message_data}'
+    #     return f'{guidelines}\nCreate a prompt/topic to keep the conversation going with sender(s) for the user in {word_limit} words or less building off of the following messages from the chat (DONT GIVE IT TO ME AS A MESSAGE,put in suggestion format NOT ACTUAL TEXTS TO SEND,keep the tone casual): {message_data}'
 
     #token friendly test version
     if button_pressed:
@@ -112,9 +112,6 @@ def get_prompt(message_data,client,max_tokens,button_pressed=False):
     content = completion.choices[0].message.content
     #return generated prompt
     return content
-
-#set up client for openai
-client = OpenAI(api_key="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")
 
 # testing
 #print(get_prompt('["Sender:Hey guys hows it going","Sender:I have so much homework :(( ","Sender:I am hungry"]',client,100))
