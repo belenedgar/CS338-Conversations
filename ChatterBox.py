@@ -242,7 +242,6 @@ def run():
                     channel_data[channel_id]["point_added"] = True   #update last message time to avoid adding points repeatedly 
 
 
-    channel_data={}
     buzzwords = {"k", "mhm", "sure", "yea", "true", "sounds good", "sg", "oh", "wow", "lmao", "no",
              "yes", "thats crazy", "thats cool", "yup", "gtg", "lol", "cool", "lit", "bet", "true", "gotcha", "facts",
              "ok", "okay", "yeah", "yup", "chill", "solid", "sick", "dope", "smh", "dead", "period", "periodt", "good", "fine", "interesting"}
