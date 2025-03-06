@@ -207,15 +207,33 @@ def run():
     """
     for timestamp functionality. an async background function to periodically check each channel for inactivity
     """
-    async def inactivity_checker(channel_id): 
+    async def inactivity_checker(channel,channel_id): 
         while True: 
+                
             await asyncio.sleep(10) #check every 10 secs
             #if message.author.bot: 
             #return 
-            if channel_id in last_message_time: 
+            global promptSent
+            if promptSent == True:
+                messages.clear()
+                for id in channel_data.keys():
+                    
+                    channel_data[id]["threshold"] = 0
+                    channel_data[id]["m_count"] = 0
+                    channel_data[channel_id]["point_added"] = False
+                    print("reset",channel_id,"to false")
+                print(channel_data)
+                print("reset threshold and m count")
+                last_message_time.clear()
+                print("last message dict cleared:",last_message_time)
+                promptSent = False
+                print(promptSent)
+
+            if channel_id in last_message_time and channel.type != discord.ChannelType.private_thread: 
                 current_time = datetime.now(timezone.utc)
                 gap_seconds = (current_time - last_message_time[channel_id]).total_seconds()
                 if gap_seconds > GAP_THRESHOLD and not channel_data[channel_id].get("point_added", False):
+                    #TODO:  Need to check if we should send prompt somewhere within this loop
                     channel_data[channel_id]["threshold"] += 1
                     print(f"[Auto-check] Added 1 point for inactivity in channel {channel_id} (gap: {gap_seconds} seconds)")
                     m_count = channel_data[channel_id]["m_count"]
@@ -253,23 +271,23 @@ def run():
         
         channel_id = message.channel.id  # Get the channel ID
         print("user_id: ",message.author.id,message.author)
-        if channel_id not in channel_data: #for a specific channel keeps track of "lull data"
+        if channel_id not in channel_data and message.channel.type != discord.ChannelType.private_thread: #for a specific channel keeps track of "lull data"
             channel_data[channel_id] = {"m_count": 0, "threshold": 0}
 
-            bot.loop.create_task(inactivity_checker(channel_id))
+            bot.loop.create_task(inactivity_checker(message.channel,channel_id))
         # Ignore bot messages to prevent infinite loops
 
         #right now need to reset tresholds of all channels, consider keeping track of the "main" channel in a global and resetting that threshold every time
         # resets threshold and m_count of all channels after the prompt button is pressed
-        if promptSent == True:
-            for id in channel_data.keys():
-                messages.clear()
-                channel_data[id]["threshold"] = 0
-                channel_data[id]["m_count"] = 0
-            print(channel_data)
-            print("reset threshold and m count")
-            promptSent = False
-            return
+        # if promptSent == True:
+        #     for id in channel_data.keys():
+        #         messages.clear()
+        #         channel_data[id]["threshold"] = 0
+        #         channel_data[id]["m_count"] = 0
+        #     print(channel_data)
+        #     print("reset threshold and m count")
+        #     promptSent = False
+        #     return
         # print("(onmess1)prompt sent = ",promptSent)
         
         # if message.channel.type == discord.ChannelType.private_thread:
@@ -287,12 +305,12 @@ def run():
         current_time = message.created_at  
         # await message.channel.send(f"Your message is {message_length} characters long. Sent at {timestamp} UTC." )
             # will be used for indicators of conversation lulls later ^^^
-        if channel_id in last_message_time: 
-            last_time = last_message_time[channel_id]
-            gap_seconds = (current_time - last_time).total_seconds()
-            if gap_seconds > GAP_THRESHOLD:
-                channel_data[channel_id]["threshold"] += 1
-                print(f"Added 1 point for time gap ({gap_seconds} seconds) in channel {channel_id}")
+        # if channel_id in last_message_time: 
+        #     last_time = last_message_time[channel_id]
+        #     gap_seconds = (current_time - last_time).total_seconds()
+        #     if gap_seconds > GAP_THRESHOLD:
+        #         channel_data[channel_id]["threshold"] += 1
+        #         print(f"Added 1 point for time gap ({gap_seconds} seconds) in channel {channel_id}")
         last_message_time[channel_id] = current_time 
         channel_data[channel_id]["point_added"] = False 
 
