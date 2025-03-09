@@ -85,13 +85,15 @@ def get_prompt(message_data,client,max_tokens,button_pressed=False):
     # ensure message data is in string format
     # Clarify which messages are from sender and which are from user
     
-    #call create_openai_input()
-    string = ""
-    for entry in message_data:
-        string += entry['user_id'] + ': ' + entry['message'] + '\n'
-    print("String: ", string)
+    #only create string if button is NOT pressed (avoids key error)
+    if not button_pressed:
+        string = ""
+        print(message_data)
+        for entry in message_data:
+            string += entry['user_id'] + ': ' + entry['message'] + '\n'
+        print("String: ", string)
     if button_pressed:
-        input = create_openai_input(string,60,button_pressed=True)
+        input = create_openai_input(message_data,60,button_pressed=True)
     else:
         input = create_openai_input(string,70)
     print("input",input)
