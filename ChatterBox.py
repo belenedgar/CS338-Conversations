@@ -143,6 +143,28 @@ def lull_algorithm(message_content, buzzwords): #helper function for detecting l
     #TO-DO: need to add more factors from google doc(timestamp, attaching userid to messages)
     return points
 
+def clear_everything(messages, channel_data, channel_id, last_message_time):
+    global promptSent
+    messages.clear()
+    for id in channel_data.keys():
+        channel_data[id]["threshold"] = 0
+        channel_data[id]["m_count"] = 0
+        channel_data[channel_id]["point_added"] = False
+        print("reset",channel_id,"to false")
+    print(channel_data)
+    print("reset threshold and m count")
+    last_message_time.clear()
+    print("last message dict cleared:",last_message_time)
+    promptSent = False
+    print(promptSent)
+    
+    #we should reset data here to be empty array again so we arent passing irrelevant messages to openai
+    messages.clear()
+    # Reset threshold and message count
+    channel_data[channel_id]["threshold"] = 0
+    channel_data[channel_id]["m_count"] = 0
+
+
 
 async def create_private_threads(bot):
     channel_id = 1333890688357499003  # Hardcorded to our main channel ID, will not work for multiple channels
@@ -215,19 +237,20 @@ def run():
             #return 
             global promptSent
             if promptSent == True:
-                messages.clear()
-                for id in channel_data.keys():
+                clear_everything(messages, channel_data, channel_id, last_message_time)
+                # messages.clear()
+                # for id in channel_data.keys():
                     
-                    channel_data[id]["threshold"] = 0
-                    channel_data[id]["m_count"] = 0
-                    channel_data[channel_id]["point_added"] = False
-                    print("reset",channel_id,"to false")
-                print(channel_data)
-                print("reset threshold and m count")
-                last_message_time.clear()
-                print("last message dict cleared:",last_message_time)
-                promptSent = False
-                print(promptSent)
+                #     channel_data[id]["threshold"] = 0
+                #     channel_data[id]["m_count"] = 0
+                #     channel_data[channel_id]["point_added"] = False
+                #     print("reset",channel_id,"to false")
+                # print(channel_data)
+                # print("reset threshold and m count")
+                # last_message_time.clear()
+                # print("last message dict cleared:",last_message_time)
+                # promptSent = False
+                # print(promptSent)
 
             if channel_id in last_message_time and channel.type != discord.ChannelType.private_thread: 
                 current_time = datetime.now(timezone.utc)
@@ -240,6 +263,8 @@ def run():
                     threshold = channel_data[channel_id]["threshold"]
                     print(f"Channel {channel_id}: m_count: {m_count}, threshold: {threshold}")
                     channel_data[channel_id]["point_added"] = True   #update last message time to avoid adding points repeatedly 
+                    if channel_data[channel_id]["threshold"] > 4:
+                        clear_everything(messages, channel_data, channel_id, last_message_time)
 
 
     buzzwords = {"k", "mhm", "sure", "yea", "true", "sounds good", "sg", "oh", "wow", "lmao", "no",
@@ -364,9 +389,10 @@ def run():
                     #send prompt to user's individual thread
                     await thread.send("Here are some prompts for conversation based on messages in the chat:\n"+ prompt)
                     #reset thresholds and messages
-                    messages.clear()
-                    channel_data[channel_id]["threshold"] = 0
-                    channel_data[channel_id]["m_count"] = 0
+                    # messages.clear()
+                    # channel_data[channel_id]["threshold"] = 0
+                    # channel_data[channel_id]["m_count"] = 0
+                    clear_everything(messages, channel_data, channel_id, last_message_time)
                     print(channel_data)
                     return
     
@@ -396,12 +422,13 @@ def run():
                 await thread.send("Here are some prompts for conversation based on messages in the chat:\n"+ prompt)
                 
                 #we should reset data here to be empty array again so we arent passing irrelevant messages to openai
-                messages.clear()
-                # Reset threshold and message count
-                channel_data[channel_id]["threshold"] = 0
-                channel_data[channel_id]["m_count"] = 0
+                # messages.clear()
+                # # Reset threshold and message count
+                # channel_data[channel_id]["threshold"] = 0
+                # channel_data[channel_id]["m_count"] = 0
                 # threshold = 0
                 # m_count = 0
+                clear_everything(messages, channel_data, channel_id, last_message_time)
 
             if m_count == 10:
                 channel_data[channel_id]["threshold"] = 0
