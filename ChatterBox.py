@@ -143,27 +143,6 @@ def lull_algorithm(message_content, buzzwords): #helper function for detecting l
     #TO-DO: need to add more factors from google doc(timestamp, attaching userid to messages)
     return points
 
-def clear_everything(messages, channel_data, channel_id, last_message_time):
-    global promptSent
-    messages.clear()
-    for id in channel_data.keys():
-        channel_data[id]["threshold"] = 0
-        channel_data[id]["m_count"] = 0
-        channel_data[channel_id]["point_added"] = False
-        print("reset",channel_id,"to false")
-    print(channel_data)
-    print("reset threshold and m count")
-    last_message_time.clear()
-    print("last message dict cleared:",last_message_time)
-    promptSent = False
-    print(promptSent)
-    
-    #we should reset data here to be empty array again so we arent passing irrelevant messages to openai
-    messages.clear()
-    # Reset threshold and message count
-    channel_data[channel_id]["threshold"] = 0
-    channel_data[channel_id]["m_count"] = 0
-
 
 
 async def create_private_threads(bot):
@@ -224,8 +203,33 @@ def run():
     GAP_THRESHOLD = 10
     messages = []
     global threads
+    lull_type = 0
 
     bot = commands.Bot(command_prefix="!", intents=intents)
+
+    def clear_everything(channel_id):
+        global promptSent
+        messages.clear()
+        for id in channel_data.keys():
+            channel_data[id]["threshold"] = 0
+            channel_data[id]["m_count"] = 0
+            channel_data[channel_id]["point_added"] = False
+            print("reset",channel_id,"to false")
+        print(channel_data)
+        print("reset threshold and m count")
+        last_message_time.clear()
+        print("last message dict cleared:",last_message_time)
+        lull_type = 0
+        print("Lull type was cleared: ", lull_type)
+        promptSent = False
+        print(promptSent)
+        
+        #we should reset data here to be empty array again so we arent passing irrelevant messages to openai
+        messages.clear()
+        # Reset threshold and message count
+        channel_data[channel_id]["threshold"] = 0
+        channel_data[channel_id]["m_count"] = 0
+
     """
     for timestamp functionality. an async background function to periodically check each channel for inactivity
     """
@@ -237,7 +241,8 @@ def run():
             #return 
             global promptSent
             if promptSent == True:
-                clear_everything(messages, channel_data, channel_id, last_message_time)
+                # lull_type = 0
+                clear_everything(channel_id)
                 # messages.clear()
                 # for id in channel_data.keys():
                     
@@ -264,7 +269,34 @@ def run():
                     print(f"Channel {channel_id}: m_count: {m_count}, threshold: {threshold}")
                     channel_data[channel_id]["point_added"] = True   #update last message time to avoid adding points repeatedly 
                     if channel_data[channel_id]["threshold"] > 4:
-                        clear_everything(messages, channel_data, channel_id, last_message_time)
+                        #check if user already has separate private channel and set thread to that
+                        id = int(messages[-1]['user_id'])
+                        print("User ID:", id, "\n")
+                        if threads.get(id):
+                            print("user_id already in threads\n")
+                            thread = threads[id]
+                        else:
+                            #otherwise create new private thread
+                            print("creating new thread...\n")
+                            thread = await channel.create_thread(
+                                name = f"{id}'s Private Thread",
+                                type=discord.ChannelType.private_thread
+                                
+                            )
+                            print("created thread\n")
+                            threads[id] = thread
+                            print("Updated Threads:", threads)
+                            user_to_invite = bot.get_user(id)
+                            await thread.add_user(user_to_invite)
+                            print("Adding user to thread\n")
+                
+                        prompt = get_prompt(messages, client, 100)
+                        promptSent = True
+                        # print("(onmessage2)prompt sent = ",promptSent)
+                        # print("Private Threads:", threads)
+                        #send prompt to user's individual thread
+                        await thread.send("Here are some prompts for conversation based on messages in the chat:\n"+ prompt)
+                        clear_everything(channel_id)
 
 
     buzzwords = {"k", "mhm", "sure", "yea", "true", "sounds good", "sg", "oh", "wow", "lmao", "no",
@@ -392,7 +424,7 @@ def run():
                     # messages.clear()
                     # channel_data[channel_id]["threshold"] = 0
                     # channel_data[channel_id]["m_count"] = 0
-                    clear_everything(messages, channel_data, channel_id, last_message_time)
+                    clear_everything(channel_id)
                     print(channel_data)
                     return
     
@@ -428,7 +460,7 @@ def run():
                 # channel_data[channel_id]["m_count"] = 0
                 # threshold = 0
                 # m_count = 0
-                clear_everything(messages, channel_data, channel_id, last_message_time)
+                clear_everything(channel_id)
 
             if m_count == 10:
                 channel_data[channel_id]["threshold"] = 0
