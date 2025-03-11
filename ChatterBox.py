@@ -165,11 +165,12 @@ async def create_private_threads(bot):
                         type=discord.ChannelType.private_thread
                     )
                     await thread.add_user(member)
-                    view = YesNoView(member, thread)
-                    await thread.send(f"Hello {member.display_name}! I'm ChatterBox, your conversational assistant! \n\n My job is to track your conversations in the main channel and if I detect the conversation is dying down I'll send you suggestions for how to keep the conversation going. You can also request my help on-demand by sending **!button** to our private thread and I'll send you suggestions for what to say. \n\nWould you like to use my services?", view=view)
-                    await view.wait()
-                    if view.response is True:
-                        threads[member.id] = thread
+                    # view = YesNoView(member, thread)
+                    #await thread.send(f"Hello {member.display_name}! I'm ChatterBox, your conversational assistant! \n\n My job is to track your conversations in the main channel and if I detect the conversation is dying down I'll send you suggestions for how to keep the conversation going. You can also request my help on-demand by sending **!button** to our private thread and I'll send you suggestions for what to say. \n\nWould you like to use my services?", view=view)
+                    await thread.send("Hello I'm Chatterbox, a conversational assistant! My job is to keep up with the chat in the main channel so I can detect when the conversation is dying down. When I start to see the conversation lull, I'll step in by sending you suggestions on how you can keep the conversation going based on the messages in the main channel. You can also request my help on-demand by sending **!button** to our private thread and I'll send you suggestions for what to say.")
+                    # await view.wait()
+                    # if view.response is True:
+                    #     threads[member.id] = thread
 
                     # def check(message):
                     #     return message.author == member and message.channel == thread
