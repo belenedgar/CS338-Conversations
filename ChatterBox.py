@@ -17,6 +17,7 @@ logger = settings.logging.getLogger("bot")
 client = OpenAI(api_key=settings.OPENAI_API_TOKEN)
 promptSent = False
 threads = {}
+last_feedback = ""
 
 class SimpleView(discord.ui.View):
     #added an init function to take in the bot_client in order to receive + respond to user messages after button presses
@@ -52,9 +53,15 @@ class SimpleView(discord.ui.View):
         try:
             #save user's response and generate a prompt based on it 
             user_response = await self.bot_client.wait_for("message",check = check, timeout = 50.0) # timeout is set to 50 sec
-            prompt = get_prompt(user_response.content, client, 100,button_pressed=True)
-            #TODO : ADD CODE TO MESSAGE USER IN SEPARATE CHAT
-            #send user prompts
+            global last_feedback
+            input_text = user_response.content
+            if last_feedback != "":
+                    feedback="TAKE INTO CONSIDERATION THIS feedback WHEN MAKING THE TEXT PROMPT:"+last_feedback
+                    last_feedback=""
+            else:
+                feedback = ""
+            
+            prompt = get_prompt(input_text, client, 100,feedback=feedback,button_pressed=True)
             global promptSent
             promptSent = True
             # print("prompt sent = ",promptSent)
@@ -65,7 +72,6 @@ class SimpleView(discord.ui.View):
 
         except asyncio.TimeoutError:
           #IF USER TAKES TOO LONG TO RESPOND, TIME OUT
-          #TODO : ADD CODE TO MESSAGE USER IN SEPARATE CHAT
           await interaction.followup.send("Button Response Timed out")    
         self.foo = True
         self.stop()
@@ -98,7 +104,10 @@ class SimpleView(discord.ui.View):
             else:
                #neutral!
                await interaction.followup.send("Your feedback will be used to improve your experience in the future with ChatterBox")
-
+             ##FEEDBACK INCORPORATION
+            global last_feedback
+            last_feedback = user_feedback.content
+            print(last_feedback)
         except asyncio.TimeoutError:
           #IF USER TAKES TOO LONG TO RESPOND, TIME OUT
           await interaction.followup.send("Button Response Timed out")   
@@ -165,11 +174,12 @@ async def create_private_threads(bot):
                         type=discord.ChannelType.private_thread
                     )
                     await thread.add_user(member)
-                    view = YesNoView(member, thread)
-                    await thread.send(f"Hello {member.display_name}! I'm ChatterBox, your conversational assistant! \n\n My job is to track your conversations in the main channel and if I detect the conversation is dying down I'll send you suggestions for how to keep the conversation going. You can also request my help on-demand by sending **!button** to our private thread and I'll send you suggestions for what to say. \n\nWould you like to use my services?", view=view)
-                    await view.wait()
-                    if view.response is True:
-                        threads[member.id] = thread
+                    # view = YesNoView(member, thread)
+                    #await thread.send(f"Hello {member.display_name}! I'm ChatterBox, your conversational assistant! \n\n My job is to track your conversations in the main channel and if I detect the conversation is dying down I'll send you suggestions for how to keep the conversation going. You can also request my help on-demand by sending **!button** to our private thread and I'll send you suggestions for what to say. \n\nWould you like to use my services?", view=view)
+                    await thread.send("Hello I'm Chatterbox, a conversational assistant! My job is to keep up with the chat in the main channel so I can detect when the conversation is dying down. When I start to see the conversation lull, I'll step in by sending you suggestions on how you can keep the conversation going based on the messages in the main channel. You can also request my help on-demand by sending **!button** to our private thread and I'll send you suggestions for what to say.")
+                    # await view.wait()
+                    # if view.response is True:
+                    threads[member.id] = thread
 
                     # def check(message):
                     #     return message.author == member and message.channel == thread
@@ -331,7 +341,7 @@ def run():
 
         # log to keep track of current message count and threshold
         print(f"Channel {channel_id}: m_count: {m_count}, threshold: {threshold}")
-
+        global last_feedback
         ## ------Oh No System:-----
         if (len(messages) >= 3):
             
@@ -343,7 +353,13 @@ def run():
             #check if the users and channels are equal
             if (len(set(last_three_users)) == 1 and len(set(last_three_channels)) == 1):
                 print("OH NAUR")
-                prompt = get_prompt(messages,client,100)
+
+                if last_feedback != "":
+                    feedback="TAKE INTO CONSIDERATION THIS feedback WHEN MAKING THE TEXT PROMPT:"+last_feedback
+                    last_feedback=""
+                else:
+                    feedback = ""
+                prompt = get_prompt(messages,client,100,feedback=feedback)
                 #check if user already has separate private channel and set thread to that
                 if user_id in threads:
                     thread = threads[user_id]
@@ -369,7 +385,12 @@ def run():
 
         # ----Lull Point System-----
         if threshold > 4:
-            prompt = get_prompt(messages, client, 100)
+            if last_feedback != "":
+                    feedback="TAKE INTO CONSIDERATION THIS feedback WHEN MAKING THE TEXT PROMPT:"+last_feedback
+                    last_feedback=""
+            else:
+                feedback = ""
+            prompt = get_prompt(messages, client, 100,feedback=feedback)
             #check if user already has separate private channel and set thread to that
             if user_id in threads:
                 thread = threads[user_id]
