@@ -57,7 +57,7 @@ class SimpleView(discord.ui.View):
             input_text = user_response.content
             if last_feedback != "":
                     feedback="TAKE INTO CONSIDERATION THIS feedback WHEN MAKING THE TEXT PROMPT:"+last_feedback
-                    last_feedback=""
+                   
             else:
                 feedback = ""
             
@@ -416,7 +416,7 @@ def run():
 
                 if last_feedback != "":
                     feedback="TAKE INTO CONSIDERATION THIS feedback WHEN MAKING THE TEXT PROMPT:"+last_feedback
-                    last_feedback=""
+            
                 else:
                     feedback = ""
                 prompt = get_prompt(messages,client,100,feedback=feedback)
@@ -454,7 +454,7 @@ def run():
           #Add last feedback from user into get_prompt
             if last_feedback != "":
                     feedback="TAKE INTO CONSIDERATION THIS feedback WHEN MAKING THE TEXT PROMPT:"+last_feedback
-                    last_feedback=""
+                    
             else:
                 feedback = ""
             prompt = get_prompt(messages, client, 100,feedback=feedback)

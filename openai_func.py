@@ -63,7 +63,7 @@ def create_openai_input(message_data,word_limit,button_pressed=False):
 
     #token friendly test version
     if button_pressed:
-        input = "Create a prompt or topic to start a converation with a person/people with the following description: (keep the tone casual and try to put it in prompt/message form instead of message form) " + message_data
+        input = "Create a prompt or topic to start a converation with a person/people with the following description: (keep the tone casual and try to put it in prompt form instead of message form) " + message_data
         return input
     if message_data == None or message_data == "" or message_data == []:
         #can change to be more specific later
