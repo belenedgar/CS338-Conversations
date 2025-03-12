@@ -1,11 +1,19 @@
-WARNING    - 2025-03-11 16:38:13,540 - client          : PyNaCl is not installed, voice will NOT be supported
-INFO       - 2025-03-11 16:38:13,543 - client          : logging in using static token
-INFO       - 2025-03-11 16:38:15,406 - gateway         : Shard ID None has connected to Gateway (Session ID: 11a9977fd4bebc83e3761f33ecc8cb37).
-ERROR      - 2025-03-11 16:39:33,898 - client          : Ignoring exception in on_message
+WARNING    - 2025-03-11 19:55:43,804 - client          : PyNaCl is not installed, voice will NOT be supported
+INFO       - 2025-03-11 19:55:43,806 - client          : logging in using static token
+INFO       - 2025-03-11 19:55:44,318 - gateway         : Shard ID None has connected to Gateway (Session ID: f843e2b631547a318e41619f6a145cff).
+ERROR      - 2025-03-11 20:05:39,629 - client          : Ignoring exception in on_message
 Traceback (most recent call last):
   File "/Users/briannaperez/Desktop/CS338-Conversations/chatterbox_venv/lib/python3.12/site-packages/discord/client.py", line 449, in _run_event
     await coro(*args, **kwargs)
-  File "/Users/briannaperez/Desktop/CS338-Conversations/ChatterBox.py", line 275, in on_message
+  File "/Users/briannaperez/Desktop/CS338-Conversations/ChatterBox.py", line 284, in on_message
+    channel_data[channel_id]["point_added"] = False
+                 ^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'channel_id' where it is not associated with a value
+ERROR      - 2025-03-11 20:05:39,823 - client          : Ignoring exception in on_message
+Traceback (most recent call last):
+  File "/Users/briannaperez/Desktop/CS338-Conversations/chatterbox_venv/lib/python3.12/site-packages/discord/client.py", line 449, in _run_event
+    await coro(*args, **kwargs)
+  File "/Users/briannaperez/Desktop/CS338-Conversations/ChatterBox.py", line 284, in on_message
     channel_data[channel_id]["point_added"] = False
                  ^^^^^^^^^^
 UnboundLocalError: cannot access local variable 'channel_id' where it is not associated with a value
