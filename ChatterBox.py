@@ -219,6 +219,7 @@ def run():
 
     def clear_everything(channel_id):
         global promptSent
+        nonlocal lull_type
         messages.clear()
         for id in channel_data.keys():
             channel_data[id]["threshold"] = 0
@@ -244,6 +245,7 @@ def run():
     for timestamp functionality. an async background function to periodically check each channel for inactivity
     """
     async def inactivity_checker(channel,channel_id): 
+        nonlocal lull_type
         while True: 
                 
             await asyncio.sleep(10) #check every 10 secs
@@ -276,6 +278,8 @@ def run():
                 if gap_seconds > GAP_THRESHOLD and not channel_data[channel_id].get("point_added", False):
                     #TODO:  Need to check if we should send prompt somewhere within this loop
                     channel_data[channel_id]["threshold"] += 1
+                    lull_type += 1
+                    print("Lull type: ", lull_type)
                     print(f"[Auto-check] Added 1 point for inactivity in channel {channel_id} (gap: {gap_seconds} seconds)")
                     m_count = channel_data[channel_id]["m_count"]
                     threshold = channel_data[channel_id]["threshold"]
@@ -303,6 +307,10 @@ def run():
                             await thread.add_user(user_to_invite)
                             print("Adding user to thread\n")
                 
+                        if lull_type > 0:
+                            print("Lull due to inactivity")
+                        else:
+                            print("Lull due to message content")
                         prompt = get_prompt(messages, client, 100)
                         promptSent = True
                         # print("(onmessage2)prompt sent = ",promptSent)
@@ -334,6 +342,7 @@ def run():
     @bot.event
     async def on_message(message):
         global promptSent
+        nonlocal lull_type
         
         # Ignore bot messages to prevent infinite loops
         if message.author.bot:
@@ -380,7 +389,12 @@ def run():
         # if message.channel.type != discord.ChannelType.private_thread:
         # updating "points"
         channel_data[channel_id]["m_count"] += 1
-        channel_data[channel_id]["threshold"] += lull_algorithm(message.content, buzzwords) #call helper function
+        lull_result = lull_algorithm(message.content, buzzwords) #call helper function
+        channel_data[channel_id]["threshold"] += lull_result
+
+        if lull_result:
+                lull_type -= 1
+                print("Lull_type: ", lull_type)
 
         m_count = channel_data[channel_id]["m_count"]
         threshold = channel_data[channel_id]["threshold"]
@@ -432,6 +446,11 @@ def run():
 
         # ----Lull Point System-----
         if threshold > 4:
+            if lull_type > 0:
+                    print("Lull due to inactivity")
+            else:
+                print("Lull due to message content")
+
           #Add last feedback from user into get_prompt
             if last_feedback != "":
                     feedback="TAKE INTO CONSIDERATION THIS feedback WHEN MAKING THE TEXT PROMPT:"+last_feedback
@@ -471,6 +490,7 @@ def run():
         if m_count == 10:
             channel_data[channel_id]["threshold"] = 0
             channel_data[channel_id]["m_count"] = 0
+            lull_type = 0
             
             # TODO: do we need to rests other things here?
         
