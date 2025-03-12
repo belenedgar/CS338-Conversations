@@ -3,8 +3,10 @@ import os
 import logging
 from logging.config import dictConfig
 from dotenv import load_dotenv
-import discord
+# THIS IS ONLY HERE SO CAEL'S MACHINE WORKS! YOU SHOULD PROBABLY COMMENT THIS OUT!
+# os.environ['SSL_CERT_FILE']='/Users/caelbaumgarten/Documents/CS338-Conversations/.venv/lib/python3.12/site-packages/certifi/cacert.pem'
 
+import discord
 load_dotenv()
 
 

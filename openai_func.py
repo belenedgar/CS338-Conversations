@@ -52,7 +52,7 @@ def create_openai_input(message_data,word_limit,button_pressed=False):
 
     ## convert message data from list to string
     # if button_pressed:
-    #     input = "{guidelines}\nCreate a prompt or topic to start a converation with a person/people with the following description: (keep the tone casual and try to put it in prompt/message form instead of message form DO NOT GIVE IT IN THE FORM OF A TEXT GIVE MULTIPLE PROMPTS IN THE FORM OF'you should talk about...','try asking about...') " + message_data
+    #     input = "{guidelines}\nCreate a prompt or topic to start a conversation with a person/people with the following description: (keep the tone casual and try to put it in prompt/message form instead of message form DO NOT GIVE IT IN THE FORM OF A TEXT GIVE MULTIPLE PROMPTS IN THE FORM OF'you should talk about...','try asking about...') " + message_data
     #     return input
     # if message_data == None or message_data == "" or message_data == []:
     #     #can change to be more specific later
@@ -67,12 +67,12 @@ def create_openai_input(message_data,word_limit,button_pressed=False):
         return input
     if message_data == None or message_data == "" or message_data == []:
         #can change to be more specific later
-        input = "Create a prompt or topic to start a converation with friends"
+        input = "Create a prompt or topic to start a conversation with friends"
         return input
     else:
         return f'Create a prompt/topic to keep the conversation going with sender(s) for the user in {word_limit} words or less building off of the following messages from the chat (DONT GIVE IT TO ME AS A MESSAGE,put in suggestion format,keep the tone casual): {message_data}'
 
-def get_prompt(message_data,client,max_tokens,button_pressed=False):
+def get_prompt(message_data,client,max_tokens,feedback="",button_pressed=False):
 
     """ Uses OpenAI API to generate a prompt based on message_data
     Args:
@@ -85,11 +85,18 @@ def get_prompt(message_data,client,max_tokens,button_pressed=False):
     # ensure message data is in string format
     # Clarify which messages are from sender and which are from user
     
-    #call create_openai_input()
+    #only create string if button is NOT pressed (avoids key error)
+    if not button_pressed:
+        string = ""
+        print(message_data)
+        for entry in message_data:
+            string += entry['user_id'] + ': ' + entry['message'] + '\n'
+        print("String: ", string)
+
     if button_pressed:
-        input = create_openai_input(message_data,60,button_pressed=True)
+        input = create_openai_input(message_data+feedback,60,button_pressed=True)
     else:
-        input = create_openai_input(message_data,70)
+        input = create_openai_input(string+feedback,70)
     print("input",input)
     if input == None or input == "":
         print("Unable to retrieve input based on data")
