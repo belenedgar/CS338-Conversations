@@ -39,7 +39,7 @@ class SimpleView(discord.ui.View):
         await self.disable_all_items()
     
 
-    @discord.ui.button(label="Prompt", 
+    @discord.ui.button(label="Suggestion", 
                        style=discord.ButtonStyle.primary)
     async def hello(self, interaction: discord.Interaction, button: discord.ui.Button):
         #TODO: MAKE SURE THE RESPONSE TO BUTTON DOES NOT GET ADDED TO DATA
