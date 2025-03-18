@@ -57,15 +57,15 @@ class SimpleView(discord.ui.View):
             input_text = user_response.content
             if last_feedback != "":
                     feedback="TAKE INTO CONSIDERATION THIS feedback WHEN MAKING THE TEXT PROMPT:"+last_feedback
-                    last_feedback=""
+                    # last_feedback=""
             else:
                 feedback = ""
             
-            prompt = get_prompt(input_text, client, 100,feedback=feedback,button_pressed=True)
+            prompt = get_prompt(input_text, client, 500,feedback=feedback,button_pressed=True)
             global promptSent
             promptSent = True
             # print("prompt sent = ",promptSent)
-            await interaction.followup.send("Here are some prompts to start up the conversation: \n"+prompt)
+            await interaction.followup.send("Here are some suggestions to start up the conversation: \n"+prompt)
             # print("prompt sent = ",promptSent)
             
 
@@ -81,7 +81,7 @@ class SimpleView(discord.ui.View):
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
         #TODO: Actually use feedback to improve system
 
-        await interaction.response.send_message("Please enter your feedback on ChatterBox here:")
+        await interaction.response.send_message("Please enter your feedback on BanterBuddy here:")
         #NEW: Take in user input 
         def check(message):
             return message.author == interaction.user and message.channel == interaction.channel
@@ -96,14 +96,14 @@ class SimpleView(discord.ui.View):
             if sentiment > 0:
                 #This message is positive!
 
-                await interaction.followup.send("Thank you for your feedback! We are glad you are enjoying using ChatterBox and will use your feedback to make sure you continue to enjoy using our system :) ")
+                await interaction.followup.send("Thank you for your feedback! We are glad you are enjoying using BanterBuddy and will use your feedback to make sure you continue to enjoy using our system :) ")
                 
             elif sentiment < 0:
                 #negative!
                 await interaction.followup.send("Im sorry to hear that, your feedback will be used to improve our system and ensure you have a better experience in the future")
             else:
                #neutral!
-               await interaction.followup.send("Your feedback will be used to improve your experience in the future with ChatterBox")
+               await interaction.followup.send("Your feedback will be used to improve your experience in the future with BanterBuddy")
              ##FEEDBACK INCORPORATION
             global last_feedback
             last_feedback = user_feedback.content
@@ -171,13 +171,13 @@ async def create_private_threads(bot):
                 print(f" Attempting thread for: {member.name}")
                 try:
                     thread = await channel.create_thread(
-                        name=f"ChatterBox - {member.display_name}",
+                        name=f"BanterBuddy - {member.display_name}",
                         type=discord.ChannelType.private_thread
                     )
                     await thread.add_user(member)
                     # view = YesNoView(member, thread)
                     #await thread.send(f"Hello {member.display_name}! I'm ChatterBox, your conversational assistant! \n\n My job is to track your conversations in the main channel and if I detect the conversation is dying down I'll send you suggestions for how to keep the conversation going. You can also request my help on-demand by sending **!button** to our private thread and I'll send you suggestions for what to say. \n\nWould you like to use my services?", view=view)
-                    await thread.send("Hello I'm Chatterbox, a conversational assistant! My job is to keep up with the chat in the main channel so I can detect when the conversation is dying down. When I start to see the conversation lull, I'll step in by sending you suggestions on how you can keep the conversation going based on the messages in the main channel. You can also request my help on-demand by sending **!button** to our private thread and I'll send you suggestions for what to say.")
+                    await thread.send("Hello, I'm BanterBuddy, a conversational assistant! My job is to keep up with the chat in the main channel so I can detect when the conversation is dying down. When I start to see the conversation lull, I'll step in by sending you suggestions on how you can keep the conversation going based on the messages in the main channel. You can also request my help on-demand by sending **!button** to our private thread and I'll send you suggestions for what to say.")
                     # await view.wait()
                     # if view.response is True:
                     threads[member.id] = thread
@@ -210,7 +210,7 @@ def run():
     
     last_message_time = {}
     channel_data = {}
-    GAP_THRESHOLD = 10
+    GAP_THRESHOLD = 1000
     messages = []
     global threads
     lull_type = 0
@@ -306,7 +306,7 @@ def run():
                             user_to_invite = bot.get_user(id)
                             await thread.add_user(user_to_invite)
                             print("Adding user to thread\n")
-                        prompt = get_prompt(messages, client, 100)
+                        prompt = get_prompt(messages, client, 500)
                         if lull_type > 0:
                             print("Lull due to inactivity")
                             await thread.send("It looks like the flow of conversation is slowing down, try these suggestions to get the conversation back up and running: " + prompt)
@@ -418,10 +418,10 @@ def run():
 
                 if last_feedback != "":
                     feedback="TAKE INTO CONSIDERATION THIS feedback WHEN MAKING THE TEXT PROMPT:"+last_feedback
-                    last_feedback=""
+                    # last_feedback=""
                 else:
                     feedback = ""
-                prompt = get_prompt(messages,client,100, 'oh no', feedback=feedback)
+                prompt = get_prompt(messages,client,500, 'oh no', feedback=feedback)
 
                 #check if user already has separate private channel and set thread to that
                 if user_id in threads:
@@ -452,7 +452,7 @@ def run():
           #Add last feedback from user into get_prompt
             if last_feedback != "":
                     feedback="TAKE INTO CONSIDERATION THIS feedback WHEN MAKING THE TEXT PROMPT:"+last_feedback
-                    last_feedback=""
+                    # last_feedback=""
             else:
                 feedback = ""
             # prompt = get_prompt(messages, client, 100,feedback=feedback)
@@ -477,11 +477,11 @@ def run():
             #send prompt to user's individual thread
             if lull_type > 0:
                 print("Lull due to inactivity")
-                prompt = get_prompt(messages, client, 100, 'inactivity', feedback=feedback)
+                prompt = get_prompt(messages, client, 500, 'inactivity', feedback=feedback)
                 await thread.send("It looks like the flow of conversation is slowing down, try these suggestions to get the conversation back up and running: " + prompt)
             else:
                 print("Lull due to message content")
-                prompt = get_prompt(messages, client, 100, 'message content', feedback=feedback)
+                prompt = get_prompt(messages, client, 500, 'message content', feedback=feedback)
                 await thread.send("Here are some suggestions to start some more meaningful conversations: " + prompt)
             
             #we should reset data here to be empty array again so we arent passing irrelevant messages to openai
