@@ -338,7 +338,7 @@ def run():
                 else:
                     feedback = ""
                 prompt = get_prompt(messages,client,500, 'oh no', feedback=feedback)
-                # Hard code to send to Admin
+                # Hard code to send to Admin [ENTER USER'S DISCORD USER_ID HERE]
                 user_id = 527169750028255242
                 #check if user already has separate private channel and set thread to that
                 if user_id in threads:
@@ -409,8 +409,6 @@ def run():
     async def button(ctx): #name of user command
         #initialize buttons with init function defined in class
         view = SimpleView(bot_client=bot,timeout=50)
-        #NOTE:   insert prompt call here later for when user asks for prompt
-        # TODO: maybe move prompt sending functionality to here
         message = await ctx.send(view=view)
         view.message = message
         
@@ -426,7 +424,7 @@ def run():
         else:
             logger.error("cancel")
     
-    @bot.command() #can later change this to be a call to OpenAI
+    @bot.command() 
     async def short_message(channel):
         await channel.send("You sent a short message! Try adding more details.")
          
