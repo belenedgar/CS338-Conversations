@@ -95,14 +95,14 @@ def get_prompt(message_data,client,max_tokens, lull="", feedback="", button_pres
     #only create string if button is NOT pressed (avoids key error)
     if not button_pressed:
         string = ""
-        print(message_data)
+        # print(message_data)
         for entry in message_data:
             string += entry['user_id'] + ': ' + entry['message'] + '\n'
-        print("String: ", string)
+        # print("String: ", string)
 
     if lull == 'inactivity':
         guidelines = (
-            "Follow these guidelines and provide the suggestions as distinct options, formatted as a list\n"
+            "The conversation has slowed down due to inactivity in the chat. Follow these guidelines and provide the suggestions as distinct options, formatted as a list\n"
             "1. Spotlight on the User: Focus on the user’s interests. Ask open-ended questions and reflect on their statements.\n"
             "2. Reincorporate and Connect: Revisit specific details from earlier in the conversation to create continuity.\n"
             "3. Depth through History, Philosophy, and Metaphor: Relate to personal experiences, share thoughtful perspectives, or use metaphors for clarity.\n"
@@ -111,7 +111,7 @@ def get_prompt(message_data,client,max_tokens, lull="", feedback="", button_pres
 
     elif lull == 'message content':
         guidelines = (
-            "Follow these guidelines and provide the suggestions as distinct options, formatted as a list\n"
+            "Users do not seem very engaged in the current conversation. Follow these guidelines and provide the suggestions as distinct options, formatted as a list\n"
             "1. Read and React with Empathy: Analyze the user’s tone and context to gauge emotions. Respond empathetically and acknowledge underlying intentions.\n"
             "2. Be Specific and Detailed: Provide vivid, relatable details. Use leading statements to encourage deeper engagement and avoid broad questions.\n"
             "3. Never Lead with 'No': Avoid shutting down ideas. If needed, use 'Yes, but…' to introduce alternate perspectives.\n"
@@ -121,7 +121,7 @@ def get_prompt(message_data,client,max_tokens, lull="", feedback="", button_pres
     
     elif lull == 'oh no':
         guidelines = (
-            "Follow these guidelines and provide the suggestions as distinct options, formatted as a list\n"
+            "The user sent a lot of messages without any responses. Follow these guidelines and provide the suggestions as distinct options, formatted as a list\n"
             "1. Spontaneity and Flow: Let the conversation evolve organically without steering it toward a specific goal or topic.\n"
             "2. Create Motion: Keep the conversation dynamic by smoothly transitioning topics before they become stale.\n"
             "3. Presence and Observation: Stay fully engaged by picking up on subtext and conversational cues. Adjust style and depth based on user feedback.\n"
@@ -133,9 +133,9 @@ def get_prompt(message_data,client,max_tokens, lull="", feedback="", button_pres
         input = create_openai_input(message_data+feedback,60,button_pressed=True)
     else:
         input = create_openai_input(string+feedback+guidelines,70)
-        print("INPUT: ", input)
+        # print("INPUT: ", input)
 
-    print("input",input)
+    # print("input",input)
     if input == None or input == "":
         print("Unable to retrieve input based on data")
         return
