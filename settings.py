@@ -3,15 +3,9 @@ import os
 import logging
 from logging.config import dictConfig
 from dotenv import load_dotenv
-# THIS IS ONLY HERE SO CAEL'S MACHINE WORKS! YOU SHOULD PROBABLY COMMENT THIS OUT!
-os.environ['SSL_CERT_FILE']='/Users/caelbaumgarten/Documents/CS338-Conversations/.venv/lib/python3.12/site-packages/certifi/cacert.pem'
 
 import discord
 load_dotenv()
-
-
-# DISCORD_API_TOKEN=MTMzMzg5NjIxNzUyNDA0MzkyNw.GtTZKx.8hwyUS_rHIemH7WXl0pf8A31Ihw6qk2aUmFpXs
-#GUILD=1333890687191613472
 
 DISCORD_API_SECRET = os.getenv("DISCORD_API_TOKEN")
 OPENAI_API_TOKEN = os.getenv("OPENAI_TOKEN")
